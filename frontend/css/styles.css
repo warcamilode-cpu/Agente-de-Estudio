@@ -279,11 +279,55 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
 #toast.show { opacity: 1; }
 
 /* ── Temas ── */
-.tema-item {
+.curso-bloque {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.curso-header {
   display: flex;
   align-items: center;
   gap: .75rem;
+  padding: .85rem 1rem;
+  background: var(--surface2);
 }
+
+.subtemas-lista {
+  display: flex;
+  flex-direction: column;
+  padding: .5rem .75rem .75rem 1.75rem;
+  gap: .4rem;
+}
+
+.subtema-item {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .5rem .75rem;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.subtema-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.subtema-nombre { font-size: .9rem; font-weight: 500; white-space: nowrap; }
+
+.agregar-subtema {
+  align-self: flex-start;
+  margin-top: .25rem;
+  font-size: .78rem;
+  opacity: .7;
+}
+.agregar-subtema:hover { opacity: 1; }
+
 .tema-dot {
   width: 14px;
   height: 14px;

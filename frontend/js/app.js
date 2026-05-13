@@ -43,28 +43,73 @@ function toast(msg, ms = 2500) {
 }
 
 // ── Topics: cache compartido ────────────────────────────────────
-let _topics = [];
+let _topics = [];   // lista plana
+let _arbol  = [];   // cursos con temas anidados
 
 async function cargarTopics() {
-  _topics = await api("GET", "/topics");
+  [_topics, _arbol] = await Promise.all([
+    api("GET", "/topics"),
+    api("GET", "/topics/arbol"),
+  ]);
   _poblarSelects();
 }
 
 function _poblarSelects() {
-  const ids = ["chat-topic", "notas-filtro-topic", "fc-filtro-topic", "mn-topic", "mc-topic"];
-  ids.forEach(id => {
+  // Selects de filtro (chat, notas, flashcards): muestran todo agrupado
+  const filtros = ["chat-topic", "notas-filtro-topic", "fc-filtro-topic"];
+  filtros.forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
-    const conTodos = ["chat-topic", "notas-filtro-topic", "fc-filtro-topic"].includes(id);
-    const valorActual = sel.value;
-    sel.innerHTML = conTodos ? '<option value="">— Sin filtro —</option>' : '<option value="">— Sin tema —</option>';
-    _topics.forEach(t => {
-      const opt = document.createElement("option");
-      opt.value = t.id;
-      opt.textContent = t.nombre;
-      sel.appendChild(opt);
+    const val = sel.value;
+    sel.innerHTML = '<option value="">— Sin filtro —</option>';
+    _arbol.forEach(curso => {
+      if (curso.temas && curso.temas.length) {
+        const grp = document.createElement("optgroup");
+        grp.label = curso.nombre;
+        curso.temas.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.nombre;
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      } else {
+        // Curso sin subtemas: aparece como opción directa
+        const opt = document.createElement("option");
+        opt.value = curso.id;
+        opt.textContent = curso.nombre;
+        sel.appendChild(opt);
+      }
     });
-    if (valorActual) sel.value = valorActual;
+    if (val) sel.value = val;
+  });
+
+  // Selects de modal (notas, flashcards): solo temas hoja para asignar
+  const modales = ["mn-topic", "mc-topic"];
+  modales.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const val = sel.value;
+    sel.innerHTML = '<option value="">— Sin tema —</option>';
+    _arbol.forEach(curso => {
+      if (curso.temas && curso.temas.length) {
+        const grp = document.createElement("optgroup");
+        grp.label = curso.nombre;
+        curso.temas.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.nombre;
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      } else {
+        const opt = document.createElement("option");
+        opt.value = curso.id;
+        opt.textContent = curso.nombre;
+        sel.appendChild(opt);
+      }
+    });
+    if (val) sel.value = val;
   });
 }
 
