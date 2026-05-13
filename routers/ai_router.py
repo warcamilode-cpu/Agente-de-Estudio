@@ -1,3 +1,4 @@
+import json
 import uuid
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -47,7 +48,8 @@ def chat_stream(body: ChatIn):
     def _generar():
         for chunk in llm_client.preguntar_stream(system_prompt, historial[-MAX_HISTORIAL:]):
             respuesta_acumulada.append(chunk)
-            yield f"data: {chunk}\n\n"
+            # JSON encode para que saltos de línea dentro del chunk no rompan SSE
+            yield f"data: {json.dumps(chunk)}\n\n"
         historial.append({"role": "assistant", "content": "".join(respuesta_acumulada)})
         yield "data: [DONE]\n\n"
 

@@ -23,15 +23,15 @@ chatForm.addEventListener("submit", async e => {
 
   _agregarMensaje("user", texto);
 
-  const topicId  = document.getElementById("chat-topic").value || null;
-  const burbuja  = _agregarMensaje("assistant", "");
-  const cursor   = document.createElement("span");
+  const topicId = document.getElementById("chat-topic").value || null;
+  const burbuja = _agregarMensaje("assistant", "");
+
+  const cursor = document.createElement("span");
   cursor.className = "cursor-blink";
   cursor.textContent = "▍";
   burbuja.appendChild(cursor);
 
   let acumulado = "";
-  let terminado = false;
 
   try {
     const resp = await fetch("/ai/chat/stream", {
@@ -39,30 +39,44 @@ chatForm.addEventListener("submit", async e => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         session_id: _sessionId,
-        message: texto,
-        topic_id: topicId ? +topicId : null,
+        message:    texto,
+        topic_id:   topicId ? +topicId : null,
       }),
     });
 
     const reader  = resp.body.getReader();
     const decoder = new TextDecoder();
+    let buffer    = "";   // guarda líneas incompletas entre chunks de red
+    let terminado = false;
 
-    while (true) {
+    while (!terminado) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const lineas = decoder.decode(value).split("\n");
+      // { stream: true } mantiene estado para caracteres multibyte (ej: tildes)
+      buffer += decoder.decode(value, { stream: true });
+
+      const lineas = buffer.split("\n");
+      // La última parte puede estar incompleta — la devolvemos al buffer
+      buffer = lineas.pop();
+
       for (const linea of lineas) {
         if (!linea.startsWith("data: ")) continue;
-        const chunk = linea.slice(6);
-        if (chunk === "[DONE]") { terminado = true; break; }
-        acumulado += chunk;
-        // Durante el streaming: texto plano para no romper markdown parcial
+        const payload = linea.slice(6).trim();
+        if (payload === "[DONE]") { terminado = true; break; }
+
+        try {
+          acumulado += JSON.parse(payload);
+        } catch {
+          // Fallback por si llega sin encode (no debería ocurrir)
+          acumulado += payload;
+        }
+
+        // Durante streaming: texto plano para no romper markdown parcial
         burbuja.textContent = acumulado;
         burbuja.appendChild(cursor);
         mensajesEl.scrollTop = mensajesEl.scrollHeight;
       }
-      if (terminado) break;
     }
   } catch (err) {
     acumulado = "Error al conectar con el servidor.";
@@ -79,7 +93,9 @@ function _agregarMensaje(rol, texto) {
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
   if (texto) {
-    div.innerHTML = rol === "assistant" ? marked.parse(texto) : _escaparHTML(texto);
+    div.innerHTML = rol === "assistant"
+      ? marked.parse(texto)
+      : _escaparHTML(texto);
   }
   mensajesEl.appendChild(div);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
@@ -87,5 +103,8 @@ function _agregarMensaje(rol, texto) {
 }
 
 function _escaparHTML(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
