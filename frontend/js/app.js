@@ -55,60 +55,54 @@ async function cargarTopics() {
 }
 
 function _poblarSelects() {
-  // Selects de filtro (chat, notas, flashcards): muestran todo agrupado
-  const filtros = ["chat-topic", "notas-filtro-topic", "fc-filtro-topic"];
-  filtros.forEach(id => {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    const val = sel.value;
-    sel.innerHTML = '<option value="">— Sin filtro —</option>';
-    _arbol.forEach(curso => {
-      if (curso.temas && curso.temas.length) {
-        const grp = document.createElement("optgroup");
-        grp.label = curso.nombre;
-        curso.temas.forEach(t => {
-          const opt = document.createElement("option");
-          opt.value = t.id;
-          opt.textContent = t.nombre;
-          grp.appendChild(opt);
-        });
-        sel.appendChild(grp);
-      } else {
-        // Curso sin subtemas: aparece como opción directa
-        const opt = document.createElement("option");
-        opt.value = curso.id;
-        opt.textContent = curso.nombre;
-        sel.appendChild(opt);
-      }
-    });
-    if (val) sel.value = val;
-  });
+  const todosIds = [
+    "chat-topic", "notas-filtro-topic", "fc-filtro-topic", "mn-topic", "mc-topic",
+  ];
+  const esFiltro = new Set(["chat-topic", "notas-filtro-topic", "fc-filtro-topic"]);
 
-  // Selects de modal (notas, flashcards): solo temas hoja para asignar
-  const modales = ["mn-topic", "mc-topic"];
-  modales.forEach(id => {
+  todosIds.forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     const val = sel.value;
-    sel.innerHTML = '<option value="">— Sin tema —</option>';
+    sel.innerHTML = esFiltro.has(id)
+      ? '<option value="">— Sin filtro —</option>'
+      : '<option value="">— Sin tema —</option>';
+
     _arbol.forEach(curso => {
-      if (curso.temas && curso.temas.length) {
-        const grp = document.createElement("optgroup");
-        grp.label = curso.nombre;
-        curso.temas.forEach(t => {
-          const opt = document.createElement("option");
-          opt.value = t.id;
-          opt.textContent = t.nombre;
-          grp.appendChild(opt);
-        });
-        sel.appendChild(grp);
-      } else {
+      const bloques = curso.bloques || [];
+
+      if (!bloques.length) {
+        // Curso sin bloques: aparece directo
         const opt = document.createElement("option");
         opt.value = curso.id;
         opt.textContent = curso.nombre;
         sel.appendChild(opt);
+        return;
       }
+
+      bloques.forEach(bloque => {
+        const temas = bloque.temas || [];
+        const grp   = document.createElement("optgroup");
+        grp.label   = `${curso.nombre} › ${bloque.nombre}`;
+
+        if (!temas.length) {
+          // Bloque sin temas: el bloque mismo es seleccionable
+          const opt = document.createElement("option");
+          opt.value = bloque.id;
+          opt.textContent = bloque.nombre;
+          grp.appendChild(opt);
+        } else {
+          temas.forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t.id;
+            opt.textContent = t.nombre;
+            grp.appendChild(opt);
+          });
+        }
+        sel.appendChild(grp);
+      });
     });
+
     if (val) sel.value = val;
   });
 }

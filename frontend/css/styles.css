@@ -278,7 +278,7 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
 }
 #toast.show { opacity: 1; }
 
-/* ── Temas ── */
+/* ── Temas — jerarquía 3 niveles ── */
 .curso-bloque {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -286,51 +286,77 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
   overflow: hidden;
 }
 
-.curso-header {
+/* Cabecera genérica de nivel */
+.nivel-header {
   display: flex;
   align-items: center;
   gap: .75rem;
-  padding: .85rem 1rem;
+  padding: .7rem 1rem;
+}
+
+.nivel-0 { background: var(--surface2); }
+.nivel-0 .tema-info strong { font-size: 1rem; }
+
+/* Badge de nivel */
+.nivel-badge {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-radius: 4px;
+  padding: .15rem .45rem;
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: center;
+}
+
+/* Listas de hijos */
+.hijos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.nivel-1-lista {
+  padding: .5rem .75rem .75rem 1.25rem;
+  background: var(--surface);
+}
+
+.nivel-2-lista {
+  padding: .35rem .5rem .5rem 1.25rem;
+  background: var(--bg);
+}
+
+/* Nodos hijos */
+.nodo-item { border-radius: 8px; overflow: hidden; }
+
+.nodo-item.nivel-1 {
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.nodo-item.nivel-2 {
+  border: 1px solid var(--border);
   background: var(--surface2);
 }
 
-.subtemas-lista {
-  display: flex;
-  flex-direction: column;
-  padding: .5rem .75rem .75rem 1.75rem;
-  gap: .4rem;
-}
+.nodo-item.nivel-2 .nivel-header { padding: .5rem .75rem; }
 
-.subtema-item {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .5rem .75rem;
-  border-radius: 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-}
-
-.subtema-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.subtema-nombre { font-size: .9rem; font-weight: 500; white-space: nowrap; }
-
-.agregar-subtema {
+/* Botón agregar hijo */
+.agregar-hijo {
   align-self: flex-start;
-  margin-top: .25rem;
+  margin-top: .2rem;
   font-size: .78rem;
-  opacity: .7;
+  opacity: .65;
 }
-.agregar-subtema:hover { opacity: 1; }
+.agregar-hijo:hover { opacity: 1; }
 
+/* Info compartida */
 .tema-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -338,9 +364,11 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: .15rem;
+  gap: .1rem;
+  min-width: 0;
 }
-.tema-info .meta { font-size: .8rem; color: var(--text-muted); }
+.tema-info .meta,
+.meta { font-size: .78rem; color: var(--text-muted); }
 
 /* ── Color picker ── */
 .color-picker {
