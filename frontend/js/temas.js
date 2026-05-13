@@ -31,44 +31,54 @@ async function cargarTemas() {
     const cursoEl = document.createElement("div");
     cursoEl.className = "curso-bloque";
 
-    // Cabecera curso
-    cursoEl.innerHTML = `
-      <div class="nivel-header nivel-0" style="border-left: 4px solid ${curso.color}">
-        <span class="nivel-badge">Curso</span>
-        <div class="tema-info">
-          <strong>${curso.nombre}</strong>
-          ${curso.descripcion ? `<span class="meta">${curso.descripcion}</span>` : ""}
-        </div>
-        <div class="row" style="flex-shrink:0; gap:.4rem;">
-          <button class="btn btn-secondary btn-sm" onclick="editarNodo(${curso.id})">Editar</button>
-          <button class="btn btn-danger btn-sm"    onclick="eliminarNodo(${curso.id}, '${_esc(curso.nombre)}', 0)">Borrar</button>
-        </div>
+    // Cabecera curso (colapsable)
+    const cursoHeader = document.createElement("div");
+    cursoHeader.className = "nivel-header nivel-0 colapsable";
+    cursoHeader.style.borderLeft = `4px solid ${curso.color}`;
+    cursoHeader.innerHTML = `
+      <span class="chevron">▾</span>
+      <span class="nivel-badge">Curso</span>
+      <div class="tema-info">
+        <strong>${curso.nombre}</strong>
+        ${curso.descripcion ? `<span class="meta">${curso.descripcion}</span>` : ""}
+      </div>
+      <div class="row" style="flex-shrink:0; gap:.4rem;">
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editarNodo(${curso.id})">Editar</button>
+        <button class="btn btn-danger btn-sm"    onclick="event.stopPropagation(); eliminarNodo(${curso.id}, '${_esc(curso.nombre)}', 0)">Borrar</button>
       </div>`;
+    cursoEl.appendChild(cursoHeader);
 
     // Bloques
     const bloquesEl = document.createElement("div");
     bloquesEl.className = "hijos-lista nivel-1-lista";
 
+    cursoHeader.addEventListener("click", () => _toggle(cursoHeader, bloquesEl));
+
     (curso.bloques || []).forEach(bloque => {
       const bloqueEl = document.createElement("div");
       bloqueEl.className = "nodo-item nivel-1";
 
-      bloqueEl.innerHTML = `
-        <div class="nivel-header" style="border-left: 3px solid ${bloque.color}">
-          <span class="nivel-badge">Bloque</span>
-          <div class="tema-info">
-            <strong>${bloque.nombre}</strong>
-            ${bloque.descripcion ? `<span class="meta">${bloque.descripcion}</span>` : ""}
-          </div>
-          <div class="row" style="flex-shrink:0; gap:.4rem;">
-            <button class="btn btn-secondary btn-sm" onclick="editarNodo(${bloque.id})">Editar</button>
-            <button class="btn btn-danger btn-sm"    onclick="eliminarNodo(${bloque.id}, '${_esc(bloque.nombre)}', 1)">Borrar</button>
-          </div>
+      const bloqueHeader = document.createElement("div");
+      bloqueHeader.className = "nivel-header colapsable";
+      bloqueHeader.style.borderLeft = `3px solid ${bloque.color}`;
+      bloqueHeader.innerHTML = `
+        <span class="chevron">▾</span>
+        <span class="nivel-badge">Bloque</span>
+        <div class="tema-info">
+          <strong>${bloque.nombre}</strong>
+          ${bloque.descripcion ? `<span class="meta">${bloque.descripcion}</span>` : ""}
+        </div>
+        <div class="row" style="flex-shrink:0; gap:.4rem;">
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editarNodo(${bloque.id})">Editar</button>
+          <button class="btn btn-danger btn-sm"    onclick="event.stopPropagation(); eliminarNodo(${bloque.id}, '${_esc(bloque.nombre)}', 1)">Borrar</button>
         </div>`;
+      bloqueEl.appendChild(bloqueHeader);
 
       // Temas dentro del bloque
       const temasEl = document.createElement("div");
       temasEl.className = "hijos-lista nivel-2-lista";
+
+      bloqueHeader.addEventListener("click", () => _toggle(bloqueHeader, temasEl));
 
       (bloque.temas || []).forEach(tema => {
         const temaEl = document.createElement("div");
@@ -200,6 +210,12 @@ async function eliminarNodo(id, nombre, nivel) {
   toast("Eliminado");
   await cargarTopics();
   cargarTemas();
+}
+
+// ── Colapsar / expandir ──────────────────────────────────────────
+function _toggle(header, hijos) {
+  const colapsado = hijos.classList.toggle("colapsado");
+  header.querySelector(".chevron").textContent = colapsado ? "▸" : "▾";
 }
 
 // ── Eventos ──────────────────────────────────────────────────────

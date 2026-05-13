@@ -344,6 +344,21 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
 
 .nodo-item.nivel-2 .nivel-header { padding: .5rem .75rem; }
 
+/* Colapsar / expandir */
+.colapsable { cursor: pointer; user-select: none; }
+.colapsable:hover { background: rgba(255,255,255,.03); }
+
+.chevron {
+  font-size: .8rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform .2s;
+  width: 12px;
+  text-align: center;
+}
+
+.hijos-lista.colapsado { display: none; }
+
 /* Botón agregar hijo */
 .agregar-hijo {
   align-self: flex-start;
