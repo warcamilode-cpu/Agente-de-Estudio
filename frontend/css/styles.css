@@ -138,7 +138,78 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
 }
 .msg.user      { align-self: flex-end; background: var(--accent); color: #fff; }
 .msg.assistant { align-self: flex-start; background: var(--surface2); }
-.msg.assistant code { background: var(--bg); padding: .1em .4em; border-radius: 4px; font-size: .85em; }
+
+/* Markdown dentro de burbujas de Shaula */
+.msg.assistant p  { margin: 0 0 .6em; }
+.msg.assistant p:last-child { margin-bottom: 0; }
+
+.msg.assistant h1,
+.msg.assistant h2,
+.msg.assistant h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: .8em 0 .3em;
+  color: var(--accent-h);
+}
+
+.msg.assistant ul,
+.msg.assistant ol {
+  padding-left: 1.3em;
+  margin: .4em 0 .6em;
+  display: flex;
+  flex-direction: column;
+  gap: .2em;
+}
+
+.msg.assistant strong { color: var(--text); font-weight: 700; }
+.msg.assistant em     { color: var(--text-muted); }
+
+.msg.assistant code {
+  background: var(--bg);
+  padding: .15em .45em;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: .83em;
+  color: #a5f3fc;
+}
+
+.msg.assistant pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+  overflow-x: auto;
+  margin: .6em 0;
+}
+.msg.assistant pre code {
+  background: none;
+  padding: 0;
+  color: #e2e8f0;
+  font-size: .85em;
+  line-height: 1.6;
+}
+
+.msg.assistant blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: .75rem;
+  margin: .5em 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.msg.assistant hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: .75em 0;
+}
+
+/* Cursor parpadeante durante streaming */
+.cursor-blink {
+  display: inline-block;
+  color: var(--accent-h);
+  animation: blink .7s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
 
 #chat-form { display: flex; gap: .5rem; flex-shrink: 0; }
 #chat-input { flex: 1; }
