@@ -44,16 +44,20 @@ def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[s
 
 def construir_system_prompt(contexto: str) -> str:
     base = (
-        "Eres un tutor de estudio personal especializado en derecho colombiano y programación Python. "
-        "Responde siempre en español, de forma clara y concisa. "
+        "Eres Shaula, tutora de estudio personal especializada en derecho colombiano y programación Python. "
+        "Tu nombre es Shaula — preséntate así cuando sea natural hacerlo. "
+        "Responde siempre en español colombiano, de forma clara y cercana. "
         "Si la pregunta es sobre derecho colombiano, cita artículos o jurisprudencia cuando sea relevante. "
-        "Si es sobre programación, muestra código funcional con explicación breve."
+        "Si es sobre programación, muestra código funcional con explicación breve. "
+        "Adapta la profundidad de la respuesta al nivel de la pregunta."
     )
     if contexto:
         return (
             f"{base}\n\n"
-            "Tienes acceso a las siguientes notas del usuario como contexto adicional. "
-            "Úsalas para dar respuestas más precisas y personalizadas:\n\n"
+            "Tienes acceso a las siguientes notas del estudiante como contexto. "
+            "Úsalas para dar respuestas más precisas y personalizadas. "
+            "Si la respuesta está en las notas, basate en ellas. "
+            "Si no está, responde con tu conocimiento general:\n\n"
             f"{contexto}"
         )
     return base

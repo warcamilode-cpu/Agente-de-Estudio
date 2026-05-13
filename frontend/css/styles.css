@@ -278,6 +278,52 @@ label { font-size: .85rem; color: var(--text-muted); display: block; margin-bott
 }
 #toast.show { opacity: 1; }
 
+/* ── Temas ── */
+.tema-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.tema-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tema-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.tema-info .meta { font-size: .8rem; color: var(--text-muted); }
+
+/* ── Color picker ── */
+.color-picker {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-top: .4rem;
+}
+.color-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s;
+}
+.color-swatch:hover  { transform: scale(1.15); }
+.color-swatch.active { border-color: #fff; transform: scale(1.15); }
+
+/* ── Shaula intro ── */
+.msg.shaula-intro {
+  background: linear-gradient(135deg, var(--surface2) 0%, #1e2a3a 100%);
+  border: 1px solid var(--accent);
+  color: var(--text);
+}
+.msg.shaula-intro strong { color: var(--accent-h); }
+
 /* ── Responsive iPad ── */
 @media (min-width: 768px) {
   .section { padding: 1.5rem 2rem; }

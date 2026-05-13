@@ -1,6 +1,6 @@
 // Router de tabs y utilidades globales
 
-const TABS = ["chat", "notas", "flashcards", "dashboard"];
+const TABS = ["chat", "temas", "notas", "flashcards", "dashboard"];
 
 document.querySelectorAll("nav button").forEach(btn => {
   btn.addEventListener("click", () => cambiarTab(btn.dataset.tab));
@@ -13,6 +13,7 @@ function cambiarTab(nombre) {
   document.querySelectorAll(".section").forEach(s =>
     s.classList.toggle("active", s.id === `tab-${nombre}`)
   );
+  if (nombre === "temas")      cargarTemas();
   if (nombre === "notas")      cargarNotas();
   if (nombre === "flashcards") cargarFlashcards();
   if (nombre === "dashboard")  cargarDashboard();

@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Agente de Estudio</title>
+  <title>Shaula — Agente de Estudio</title>
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 
 <nav>
-  <button class="active" data-tab="chat">💬 Chat</button>
+  <button class="active" data-tab="chat">💬 Shaula</button>
+  <button data-tab="temas">📚 Temas</button>
   <button data-tab="notas">📝 Notas</button>
   <button data-tab="flashcards">🃏 Flashcards</button>
   <button data-tab="dashboard">📊 Dashboard</button>
@@ -19,12 +20,23 @@
 
   <!-- ── CHAT ── -->
   <section id="tab-chat" class="section active">
-    <div id="chat-messages"></div>
+    <div id="chat-messages">
+      <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema arriba y preguntame lo que necesites.</div>
+    </div>
     <form id="chat-form">
       <select id="chat-topic" style="max-width:160px"></select>
-      <input id="chat-input" type="text" placeholder="Escribe tu pregunta…" autocomplete="off">
+      <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off">
       <button type="submit" class="btn btn-primary">Enviar</button>
     </form>
+  </section>
+
+  <!-- ── TEMAS ── -->
+  <section id="tab-temas" class="section">
+    <div class="row">
+      <h2 style="flex:1">Mis temas de estudio</h2>
+      <button class="btn btn-primary" id="btn-nuevo-tema">+ Nuevo tema</button>
+    </div>
+    <div id="temas-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
   </section>
 
   <!-- ── NOTAS ── -->
@@ -77,6 +89,30 @@
   </section>
 
 </main>
+
+<!-- ── MODAL TEMA ── -->
+<div class="modal-overlay" id="modal-tema">
+  <div class="modal">
+    <h2 id="modal-tema-titulo">Nuevo tema</h2>
+    <div>
+      <label>Nombre del tema</label>
+      <input id="mt-nombre" type="text" placeholder="Ej: Derecho Constitucional">
+    </div>
+    <div>
+      <label>Descripción (opcional)</label>
+      <input id="mt-descripcion" type="text" placeholder="Breve descripción">
+    </div>
+    <div>
+      <label>Color</label>
+      <div class="color-picker" id="mt-color-picker"></div>
+      <input type="hidden" id="mt-color" value="#6366f1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalTema()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTema()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── MODAL NOTA ── -->
 <div class="modal-overlay" id="modal-nota">
@@ -132,6 +168,7 @@
 
 <script src="/static/js/app.js"></script>
 <script src="/static/js/chat.js"></script>
+<script src="/static/js/temas.js"></script>
 <script src="/static/js/notas.js"></script>
 <script src="/static/js/flashcards.js"></script>
 <script src="/static/js/dashboard.js"></script>
