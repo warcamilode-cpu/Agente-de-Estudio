@@ -5,6 +5,11 @@
 
 ---
 
+## Idioma
+Responde siempre en español colombiano.
+
+---
+
 ## Qué es este proyecto
 
 Aplicación web personal de estudio tipo "todo en uno" que combina:
@@ -25,13 +30,13 @@ Aplicación web personal de estudio tipo "todo en uno" que combina:
 |------|-----------|-------|
 | Backend | FastAPI (Python 3.11+) | Uvicorn como servidor |
 | Base de datos | SQLite | Un solo archivo `estudio.db` |
-| IA (dev) | Ollama local | Modelo `qwen2.5-coder:14b` (GTX 1080 Ti, 11 GB VRAM) |
-| IA (prod) | Anthropic Claude API | `claude-haiku-4-5-20251001` |
+| IA | Anthropic Claude API | `claude-haiku-4-5-20251001` — proveedor único activo |
+| IA (futuro) | Ollama local | Pendiente de integrar — `qwen2.5-coder:14b` (GTX 1080 Ti) |
 | Frontend | HTML + CSS + Vanilla JS | Sin frameworks, sin build step |
 | Acceso remoto | Tailscale | Ya configurado en el servidor |
 
 **No usar:** React, Vue, Svelte, SQLAlchemy ORM, Alembic, Docker (innecesario para uso personal).  
-**Sí usar:** sqlite3 nativo de Python, anthropic SDK oficial, ollama SDK.
+**Sí usar:** sqlite3 nativo de Python, anthropic SDK oficial.
 
 ---
 
@@ -83,18 +88,16 @@ agente-estudio/
 ## Variables de entorno (`.env`)
 
 ```env
-# Proveedor de IA: "ollama" (gratis, local) o "claude" (API de pago)
-LLM_PROVEEDOR=ollama
+# Proveedor de IA: "claude" activo. "ollama" pendiente de implementar.
+LLM_PROVEEDOR=claude
 
-# Ollama — corre en el mismo servidor Ubuntu
-# Hardware: GTX 1080 Ti 11 GB VRAM — qwen2.5-coder:14b usa ~8.2 GB, cabe cómodo
-# Alternativa jurídica: cambiar a qwen2.5:14b si se prioriza derecho sobre código
-OLLAMA_BASE_URL=http://localhost:11434
-MODELO_OLLAMA=qwen2.5-coder:14b
-
-# Claude API — solo si LLM_PROVEEDOR=claude
+# Claude API (proveedor activo)
 ANTHROPIC_API_KEY=sk-ant-...
 MODELO_CLAUDE=claude-haiku-4-5-20251001
+
+# Ollama (pendiente — hardware: GTX 1080 Ti 11 GB VRAM)
+# OLLAMA_BASE_URL=http://localhost:11434
+# MODELO_OLLAMA=qwen2.5-coder:14b
 
 # App
 APP_HOST=0.0.0.0
@@ -281,11 +284,11 @@ Un usuario, acceso local, datos de estudio personal. SQLite es más que suficien
 **Por qué Vanilla JS y no React:**  
 El frontend se sirve como archivos estáticos desde FastAPI. Sin build step, sin node_modules, editable directamente desde el iPad. El proyecto no justifica la complejidad de un framework.
 
-**Por qué Ollama por defecto:**  
-Durante desarrollo se hacen decenas de llamadas de prueba. Usar la API de Claude cobraría por cada test. Ollama es idéntico en la interfaz pero gratis. El switch a Claude es una línea en `.env`.
+**Por qué Claude Haiku como proveedor inicial y no Ollama:**  
+Se priorizó tener el agente funcionando rápido con calidad garantizada. Haiku 4.5 es el modelo más económico de Anthropic y maneja bien español y derecho. Ollama queda pendiente para cuando se quiera eliminar el costo de API en desarrollo.
 
-**Por qué `qwen2.5-coder:14b` como modelo local:**  
-Hardware disponible: GTX 1080 Ti con 11 GB VRAM. El modelo usa ~8.2 GB en Q4, cabe sin problema y corre íntegramente en GPU (~20-30 tok/seg). Se eligió la variante coder porque la prioridad actual es construir el propio agente en Python. Si el foco cambia a derecho colombiano, cambiar a `qwen2.5:14b` (mismo tamaño, mejor español general) es una línea en `.env` sin tocar código.
+**Ollama (futuro):**  
+Hardware disponible: GTX 1080 Ti con 11 GB VRAM. `qwen2.5-coder:14b` usa ~8.2 GB en Q4, cabe íntegramente en GPU. Cuando se integre, el switch es una línea en `.env` sin tocar ningún router — la abstracción `llm_client.py` ya lo prevé.
 
 ---
 
@@ -293,16 +296,13 @@ Hardware disponible: GTX 1080 Ti con 11 GB VRAM. El modelo usa ~8.2 GB en Q4, ca
 
 ```bash
 # 1. Instalar dependencias
-pip install fastapi uvicorn anthropic ollama python-dotenv
+pip install -r requirements.txt
 
 # 2. Configurar entorno
 cp .env.example .env
-# editar .env con tus valores
+# editar .env: poner ANTHROPIC_API_KEY y verificar MODELO_CLAUDE
 
-# 3. Inicializar la base de datos
-python -c "from database.connection import init_db; init_db()"
-
-# 4. Levantar el servidor
+# 3. Levantar el servidor (init_db() corre automático al arrancar via lifespan)
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Acceso desde iPad (Tailscale)
@@ -315,25 +315,23 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### Completado ✅
 - [x] Arquitectura definida
-- [x] `ai_router.py` — Chat con contexto, historial y streaming
-- [x] `llm_client.py` — Abstracción Ollama/Claude
-- [x] Schema de base de datos
-
-### En construcción 🔧
-- [ ] `database/connection.py` — conexión SQLite y `init_db()`
-- [ ] `context_builder.py` — búsqueda de notas y construcción de prompt
-- [ ] `srs_engine.py` — algoritmo SM-2
-- [ ] `notas_router.py` — CRUD de notas
-- [ ] `flashcards_router.py` — CRUD + lógica de repaso
-- [ ] `topics_router.py` — CRUD de temas
-- [ ] `dashboard_router.py` — estadísticas
-- [ ] `main.py` — registro de todos los routers
-- [ ] Frontend completo (4 módulos)
+- [x] `database/connection.py` — conexión SQLite, context manager, `init_db()`
+- [x] `database/schema.sql` — tablas y índices
+- [x] `services/llm_client.py` — Claude Haiku 4.5 (streaming + sync)
+- [x] `services/context_builder.py` — búsqueda LIKE + system prompt
+- [x] `services/srs_engine.py` — algoritmo SM-2 puro
+- [x] `routers/ai_router.py` — chat con historial en memoria, streaming SSE
+- [x] `routers/notas_router.py` — CRUD completo con filtros
+- [x] `routers/flashcards_router.py` — CRUD + endpoint de respuesta SM-2
+- [x] `routers/topics_router.py` — CRUD completo
+- [x] `routers/dashboard_router.py` — resumen diario, racha, progreso por topic
+- [x] `main.py` — FastAPI con lifespan, todos los routers, archivos estáticos
+- [x] Frontend completo — chat SSE, notas, flashcards con flip, dashboard
 
 ### Pendiente 📋
-- [ ] Servir frontend como archivos estáticos desde FastAPI
-- [ ] Instalación y configuración de Ollama en el servidor
+- [ ] Integración Ollama (estructura lista en `llm_client.py`, falta implementar)
 - [ ] Datos de prueba (topics y notas iniciales de derecho y Python)
+- [ ] Registrar sesiones de estudio desde el frontend (tabla `sesiones_estudio` existe)
 
 ---
 

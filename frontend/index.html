@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Agente de Estudio</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+<nav>
+  <button class="active" data-tab="chat">💬 Chat</button>
+  <button data-tab="notas">📝 Notas</button>
+  <button data-tab="flashcards">🃏 Flashcards</button>
+  <button data-tab="dashboard">📊 Dashboard</button>
+</nav>
+
+<main>
+
+  <!-- ── CHAT ── -->
+  <section id="tab-chat" class="section active">
+    <div id="chat-messages"></div>
+    <form id="chat-form">
+      <select id="chat-topic" style="max-width:160px"></select>
+      <input id="chat-input" type="text" placeholder="Escribe tu pregunta…" autocomplete="off">
+      <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+  </section>
+
+  <!-- ── NOTAS ── -->
+  <section id="tab-notas" class="section">
+    <div class="row">
+      <input id="notas-busqueda" type="text" placeholder="Buscar notas…">
+      <select id="notas-filtro-topic"><option value="">Todos los temas</option></select>
+      <button class="btn btn-primary" id="btn-nueva-nota">+ Nueva nota</button>
+    </div>
+    <div id="notas-lista"></div>
+  </section>
+
+  <!-- ── FLASHCARDS ── -->
+  <section id="tab-flashcards" class="section">
+    <div class="row">
+      <select id="fc-filtro-topic"><option value="">Todos los temas</option></select>
+      <button class="btn btn-primary" id="btn-nueva-card">+ Nueva card</button>
+      <button class="btn btn-secondary" id="btn-modo-repaso">Repasar pendientes</button>
+    </div>
+
+    <!-- modo repaso -->
+    <div id="fc-repaso" style="display:none; flex-direction:column; gap:1rem; align-items:center;">
+      <p id="fc-repaso-contador" style="color:var(--text-muted); font-size:.9rem;"></p>
+      <div class="flashcard-flip card" id="fc-flip" style="width:100%; max-width:560px;" onclick="fcFlip()">
+        <div class="flashcard-inner">
+          <div class="flashcard-front" id="fc-pregunta"></div>
+          <div class="flashcard-back"  id="fc-respuesta"></div>
+        </div>
+      </div>
+      <div class="rating-row" id="fc-rating-row" style="display:none; width:100%; max-width:560px;">
+        <button class="btn btn-danger btn-sm"     onclick="fcCalificar(0)">0 – Nada</button>
+        <button class="btn btn-secondary btn-sm"  onclick="fcCalificar(2)">2 – Difícil</button>
+        <button class="btn btn-secondary btn-sm"  onclick="fcCalificar(3)">3 – Bien</button>
+        <button class="btn btn-primary btn-sm"    onclick="fcCalificar(4)">4 – Fácil</button>
+        <button class="btn btn-primary btn-sm"    onclick="fcCalificar(5)">5 – Perfecto</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="fcSalirRepaso()">Salir del repaso</button>
+    </div>
+
+    <!-- lista -->
+    <div id="fc-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
+  </section>
+
+  <!-- ── DASHBOARD ── -->
+  <section id="tab-dashboard" class="section">
+    <h2>Resumen de hoy</h2>
+    <div class="stats-grid" id="dash-stats"></div>
+    <h2>Progreso por tema</h2>
+    <div id="dash-topics" style="display:flex; flex-direction:column; gap:.75rem;"></div>
+  </section>
+
+</main>
+
+<!-- ── MODAL NOTA ── -->
+<div class="modal-overlay" id="modal-nota">
+  <div class="modal">
+    <h2 id="modal-nota-titulo">Nueva nota</h2>
+    <div>
+      <label>Título</label>
+      <input id="mn-titulo" type="text" placeholder="Título de la nota">
+    </div>
+    <div>
+      <label>Tema</label>
+      <select id="mn-topic"></select>
+    </div>
+    <div>
+      <label>Tags (separados por coma)</label>
+      <input id="mn-tags" type="text" placeholder="tutela, derechos, python…">
+    </div>
+    <div>
+      <label>Contenido (Markdown)</label>
+      <textarea id="mn-contenido" rows="8"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalNota()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarNota()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL FLASHCARD ── -->
+<div class="modal-overlay" id="modal-card">
+  <div class="modal">
+    <h2 id="modal-card-titulo">Nueva flashcard</h2>
+    <div>
+      <label>Tema</label>
+      <select id="mc-topic"></select>
+    </div>
+    <div>
+      <label>Pregunta</label>
+      <textarea id="mc-pregunta" rows="3"></textarea>
+    </div>
+    <div>
+      <label>Respuesta</label>
+      <textarea id="mc-respuesta" rows="4"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalCard()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCard()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/static/js/app.js"></script>
+<script src="/static/js/chat.js"></script>
+<script src="/static/js/notas.js"></script>
+<script src="/static/js/flashcards.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
