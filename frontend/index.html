@@ -20,9 +20,20 @@
 
   <!-- ── CHAT ── -->
   <section id="tab-chat" class="section active">
-    <div id="chat-messages">
-      <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema arriba y preguntame lo que necesites.</div>
+
+    <!-- Barra de sesión activa -->
+    <div id="chat-sesion-bar">
+      <span id="chat-sesion-titulo" class="sesion-titulo">Nueva sesión</span>
+      <div class="row" style="gap:.4rem; flex-shrink:0">
+        <button class="btn btn-secondary btn-sm" onclick="abrirSesiones()">📋 Sesiones</button>
+        <button class="btn btn-secondary btn-sm" onclick="nuevaSesionChat()">+ Nueva</button>
+      </div>
     </div>
+
+    <div id="chat-messages">
+      <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
+    </div>
+
     <form id="chat-form">
       <select id="chat-topic" style="max-width:160px"></select>
       <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off">
@@ -89,6 +100,17 @@
   </section>
 
 </main>
+
+<!-- ── MODAL SESIONES ── -->
+<div class="modal-overlay" id="modal-sesiones">
+  <div class="modal">
+    <h2>Sesiones anteriores</h2>
+    <div id="sesiones-lista" style="display:flex; flex-direction:column; gap:.4rem; max-height:60dvh; overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-sesiones').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── MODAL TEMA ── -->
 <div class="modal-overlay" id="modal-tema">

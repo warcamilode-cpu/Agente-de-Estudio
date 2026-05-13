@@ -1,25 +1,89 @@
-// Módulo de chat con streaming SSE + renderizado Markdown
+// Módulo de chat con sesiones persistentes + streaming SSE + Markdown
 
-let _sessionId = null;
-
-async function _iniciarSesion() {
-  const data = await api("POST", "/ai/chat/nueva-sesion");
-  _sessionId = data.session_id;
-}
-
-_iniciarSesion();
+let _sessionId  = null;
+let _primerMensaje = true;
 
 const chatForm   = document.getElementById("chat-form");
 const chatInput  = document.getElementById("chat-input");
 const mensajesEl = document.getElementById("chat-messages");
 
+// Arranca con una sesión nueva
+nuevaSesionChat();
+
+// ── Sesiones ─────────────────────────────────────────────────────
+
+async function nuevaSesionChat() {
+  const data = await api("POST", "/ai/chat/nueva-sesion");
+  _sessionId     = data.session_id;
+  _primerMensaje = true;
+  mensajesEl.innerHTML = `
+    <div class="msg assistant shaula-intro">
+      Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
+      Seleccioná un tema y preguntame lo que necesites.
+    </div>`;
+  document.getElementById("chat-sesion-titulo").textContent = "Nueva sesión";
+}
+
+async function abrirSesiones() {
+  const sesiones = await api("GET", "/ai/sesiones");
+  const lista    = document.getElementById("sesiones-lista");
+  lista.innerHTML = "";
+
+  if (!sesiones.length) {
+    lista.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:1rem;">Sin sesiones guardadas.</p>';
+  } else {
+    sesiones.forEach(s => {
+      const div = document.createElement("div");
+      div.className = "sesion-item";
+      const fecha = new Date(s.actualizado_at + "Z").toLocaleString("es-CO", {
+        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+      });
+      div.innerHTML = `
+        <div class="sesion-info" onclick="cargarSesion('${s.session_id}', '${_esc(s.titulo)}')">
+          <span class="sesion-titulo-item">${s.titulo}</span>
+          <span class="sesion-meta">${fecha} · ${s.total_mensajes} mensajes</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="eliminarSesion('${s.session_id}')">✕</button>`;
+      lista.appendChild(div);
+    });
+  }
+
+  document.getElementById("modal-sesiones").classList.add("open");
+}
+
+async function cargarSesion(sessionId, titulo) {
+  document.getElementById("modal-sesiones").classList.remove("open");
+
+  const data = await api("GET", `/ai/chat/${sessionId}/historial`);
+  _sessionId     = sessionId;
+  _primerMensaje = false;
+
+  document.getElementById("chat-sesion-titulo").textContent = titulo;
+  mensajesEl.innerHTML = "";
+
+  if (!data.mensajes.length) {
+    mensajesEl.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:1rem;">Sesión vacía.</p>';
+    return;
+  }
+
+  data.mensajes.forEach(m => _agregarMensaje(m.rol, m.contenido));
+  mensajesEl.scrollTop = mensajesEl.scrollHeight;
+}
+
+async function eliminarSesion(sessionId) {
+  if (!confirm("¿Eliminar esta sesión?")) return;
+  await api("DELETE", `/ai/sesiones/${sessionId}`);
+  if (sessionId === _sessionId) nuevaSesionChat();
+  abrirSesiones();
+}
+
+// ── Enviar mensaje ────────────────────────────────────────────────
+
 chatForm.addEventListener("submit", async e => {
   e.preventDefault();
   const texto = chatInput.value.trim();
-  if (!texto) return;
+  if (!texto || !_sessionId) return;
   chatInput.value = "";
-
-  if (!_sessionId) await _iniciarSesion();
 
   _agregarMensaje("user", texto);
 
@@ -46,33 +110,22 @@ chatForm.addEventListener("submit", async e => {
 
     const reader  = resp.body.getReader();
     const decoder = new TextDecoder();
-    let buffer    = "";   // guarda líneas incompletas entre chunks de red
+    let buffer    = "";
     let terminado = false;
 
     while (!terminado) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      // { stream: true } mantiene estado para caracteres multibyte (ej: tildes)
       buffer += decoder.decode(value, { stream: true });
-
       const lineas = buffer.split("\n");
-      // La última parte puede estar incompleta — la devolvemos al buffer
       buffer = lineas.pop();
 
       for (const linea of lineas) {
         if (!linea.startsWith("data: ")) continue;
         const payload = linea.slice(6).trim();
         if (payload === "[DONE]") { terminado = true; break; }
-
-        try {
-          acumulado += JSON.parse(payload);
-        } catch {
-          // Fallback por si llega sin encode (no debería ocurrir)
-          acumulado += payload;
-        }
-
-        // Durante streaming: texto plano para no romper markdown parcial
+        try { acumulado += JSON.parse(payload); } catch { acumulado += payload; }
         burbuja.textContent = acumulado;
         burbuja.appendChild(cursor);
         mensajesEl.scrollTop = mensajesEl.scrollHeight;
@@ -83,19 +136,27 @@ chatForm.addEventListener("submit", async e => {
     console.error(err);
   }
 
-  // Al terminar: renderiza Markdown completo
   cursor.remove();
   burbuja.innerHTML = marked.parse(acumulado);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
+
+  // Actualiza el título de la barra con el primer mensaje
+  if (_primerMensaje) {
+    _primerMensaje = false;
+    document.getElementById("chat-sesion-titulo").textContent =
+      texto.length > 60 ? texto.slice(0, 60) + "…" : texto;
+  }
 });
 
-function _agregarMensaje(rol, texto) {
+// ── Helpers ──────────────────────────────────────────────────────
+
+function _agregarMensaje(rol, contenido) {
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
-  if (texto) {
+  if (contenido) {
     div.innerHTML = rol === "assistant"
-      ? marked.parse(texto)
-      : _escaparHTML(texto);
+      ? marked.parse(contenido)
+      : _escaparHTML(contenido);
   }
   mensajesEl.appendChild(div);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
@@ -103,8 +164,9 @@ function _agregarMensaje(rol, texto) {
 }
 
 function _escaparHTML(str) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function _esc(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, "&quot;");
 }
