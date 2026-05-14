@@ -1247,7 +1247,50 @@ label {
 
 .accion-texto { flex: 1; font-size: .845rem; line-height: 1.5; }
 
-/* ── Plan ── */
+/* ── Plan (layout fijo: contenido arriba scrollable, chat abajo fijo) ── */
+#tab-plan.active { overflow: hidden; gap: 0; }
+
+/* Formulario de generación (se oculta cuando hay plan activo) */
+#plan-header-row { flex-shrink: 0; padding-bottom: .5rem; }
+#plan-form-area  { flex-shrink: 0; }
+
+/* Contenedor resultado: ocupa el espacio restante */
+#plan-resultado {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* Zona scrollable del contenido del plan */
+#plan-content-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  padding: var(--gap) var(--gap) .5rem;
+}
+
+/* Chat Q&A: siempre visible en la parte inferior */
+#plan-chat-area {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0 !important;
+  padding: .75rem var(--gap) var(--gap);
+  background: var(--card-bg);
+}
+#plan-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
 #plan-contenido { line-height: 1.75; }
 #plan-contenido h2 { font-size: 1rem; color: var(--accent-h); margin: 1.2em 0 .4em; font-weight: 700; }
 #plan-contenido h3 { font-size: .9rem; margin: .75em 0 .28em; }

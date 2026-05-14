@@ -166,7 +166,7 @@
       <section id="tab-plan" class="section">
 
         <!-- Encabezado -->
-        <div class="row" style="margin-bottom:.9rem;">
+        <div id="plan-header-row" class="row" style="margin-bottom:.9rem; flex-shrink:0; padding: var(--gap) var(--gap) 0;">
           <div style="flex:1;">
             <h2 style="margin-bottom:.1rem;">Programador</h2>
             <p style="font-size:.75rem; color:var(--text-muted); margin:0;">
@@ -177,7 +177,7 @@
         </div>
 
         <!-- Formulario de nuevo plan -->
-        <div id="plan-form-area" class="card" style="margin-bottom:1rem;">
+        <div id="plan-form-area" class="card" style="margin: 0 var(--gap) .5rem;">
           <div style="margin-bottom:.65rem;">
             <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Materia (opcional)</label>
             <select id="plan-materia-sel" style="width:100%; margin-top:.3rem;"><option value="">— Sin filtro —</option></select>
@@ -193,17 +193,17 @@
 
         <!-- Plan generado (todos los módulos juntos) + Q&A -->
         <div id="plan-resultado" style="display:none;">
-          <p id="plan-fecha" style="color:var(--text-muted); font-size:.82rem; margin-bottom:.6rem;"></p>
 
-          <!-- Plan completo -->
-          <div id="plan-contenido" class="card"
-               style="font-size:.9rem; line-height:1.8; margin-bottom:1rem;"></div>
-
-          <div style="margin-bottom:.75rem;">
-            <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()">+ Nuevo plan</button>
+          <!-- Zona scrollable: contenido del plan -->
+          <div id="plan-content-scroll">
+            <p id="plan-fecha" style="color:var(--text-muted); font-size:.82rem;"></p>
+            <div id="plan-contenido" class="card" style="font-size:.9rem; line-height:1.8;"></div>
+            <div>
+              <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()">+ Nuevo plan</button>
+            </div>
           </div>
 
-          <!-- Chat Q&A con el Planificador / Evaluador -->
+          <!-- Chat Q&A — siempre visible al fondo -->
           <div class="card" id="plan-chat-area">
             <!-- Encabezado con indicador de agente activo -->
             <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.65rem; flex-wrap:wrap;">
@@ -216,10 +216,8 @@
                 ⚡ Activar Electra
               </button>
             </div>
-            <div id="plan-chat-messages"
-                 style="display:flex; flex-direction:column; gap:.5rem;
-                        max-height:340px; overflow-y:auto; margin-bottom:.65rem;"></div>
-            <form id="plan-chat-form" style="display:flex; gap:.5rem;">
+            <div id="plan-chat-messages"></div>
+            <form id="plan-chat-form" style="display:flex; gap:.5rem; margin-top:.5rem;">
               <input id="plan-chat-input" type="text"
                      placeholder="¿Tenés dudas sobre algún paso del plan?" style="flex:1;">
               <button type="submit" class="btn btn-primary btn-sm">Enviar</button>

@@ -68,8 +68,10 @@ function _mostrarPlan(data) {
   _modoEval      = false;
   _actualizarIndicadorAgente();
 
-  resultado.style.display = "block";
-  resultado.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Ocultar formulario de generación — el plan ocupa el espacio
+  document.getElementById("plan-form-area").style.display = "none";
+
+  resultado.style.display = "flex";
 }
 
 // ── Nuevo plan ───────────────────────────────────────────────────
@@ -79,6 +81,7 @@ function nuevoPlan() {
   _planHistorial = [];
   _modoEval      = false;
   document.getElementById("plan-resultado").style.display = "none";
+  document.getElementById("plan-form-area").style.display = "";
   document.getElementById("plan-tema-input").value = "";
   document.getElementById("plan-tema-input").focus();
 }
