@@ -57,7 +57,12 @@ def servir_archivo(doc_id: int):
     if not ruta.exists():
         raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
     media_type = MIME_SALIDA.get(row["tipo"], "application/octet-stream")
-    return FileResponse(str(ruta), media_type=media_type, filename=row["archivo_nombre"])
+    nombre = row["archivo_nombre"]
+    return FileResponse(
+        str(ruta),
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename*=UTF-8''{nombre}"},
+    )
 
 
 @router.post("", status_code=201)

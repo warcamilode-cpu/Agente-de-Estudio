@@ -107,6 +107,23 @@ def _migraciones(conn: sqlite3.Connection) -> None:
             CREATE INDEX idx_referencias_materia ON referencias_rapidas(materia_id);
         """)
 
+    # Migración: tabla programas (pregrado/posgrado) y programa_id en semestres
+    if "programas" not in tablas:
+        conn.executescript("""
+            CREATE TABLE programas (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre      TEXT NOT NULL,
+                tipo        TEXT DEFAULT 'pregrado',
+                descripcion TEXT DEFAULT '',
+                creado_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+    columnas_sem = {r[1] for r in conn.execute("PRAGMA table_info(semestres)")}
+    if "programa_id" not in columnas_sem:
+        conn.execute(
+            "ALTER TABLE semestres ADD COLUMN programa_id INTEGER REFERENCES programas(id) ON DELETE SET NULL"
+        )
+
     # Migración: materia_id en tablas que antes usaban topic_id
     columnas_fc   = {r[1] for r in conn.execute("PRAGMA table_info(flashcards)")}
     columnas_docs = {r[1] for r in conn.execute("PRAGMA table_info(documentos)")}

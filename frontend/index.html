@@ -97,7 +97,7 @@
           <div class="cuaderno-nav">
             <div class="cuaderno-nav-scroll" id="cn-nav-scroll"></div>
             <div class="cuaderno-nav-footer">
-              <button class="btn btn-primary btn-sm" id="btn-nuevo-semestre" style="width:100%">+ Agregar semestre</button>
+              <button class="btn btn-primary btn-sm" id="btn-nuevo-programa" style="width:100%">+ Nuevo programa</button>
             </div>
           </div>
           <!-- Contenido del cuaderno -->
@@ -240,6 +240,42 @@
     <div id="mdv-cuerpo" style="max-height:75dvh; overflow-y:auto;"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarVisorDoc()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo programa -->
+<div class="modal-overlay" id="modal-programa">
+  <div class="modal">
+    <h2 id="modal-prog-titulo">Nuevo programa</h2>
+    <input type="hidden" id="prog-id">
+    <div><label>Nombre del programa</label><input id="prog-nombre" type="text" placeholder="Ej: Derecho, Maestría en IA"></div>
+    <div>
+      <label>Tipo</label>
+      <select id="prog-tipo">
+        <option value="pregrado">Pregrado</option>
+        <option value="posgrado">Posgrado</option>
+        <option value="otro">Otro / Complementario</option>
+      </select>
+    </div>
+    <div><label>Descripción (opcional)</label><input id="prog-descripcion" type="text" placeholder="Universidad, énfasis…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalPrograma()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPrograma()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo semestre -->
+<div class="modal-overlay" id="modal-semestre">
+  <div class="modal">
+    <h2 id="modal-sem-titulo">Nuevo semestre</h2>
+    <input type="hidden" id="sem-id">
+    <input type="hidden" id="sem-programa-id">
+    <div><label>Nombre del semestre</label><input id="sem-nombre" type="text" placeholder="Ej: 2025-1, Primer semestre"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalSemestre()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarSemestre()">Guardar</button>
     </div>
   </div>
 </div>

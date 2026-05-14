@@ -7,9 +7,15 @@ router = APIRouter(prefix="/cuaderno", tags=["cuaderno"])
 
 # ── Modelos ───────────────────────────────────────────────────────
 
+class ProgramaIn(BaseModel):
+    nombre: str
+    tipo: str = "pregrado"
+    descripcion: str = ""
+
 class SemestreIn(BaseModel):
     nombre: str
     orden: int = 0
+    programa_id: int | None = None
 
 class MateriaIn(BaseModel):
     semestre_id: int
@@ -48,6 +54,42 @@ class ReferenciaIn(BaseModel):
     definicion: str
 
 
+# ── Programas ────────────────────────────────────────────────────
+
+@router.get("/programas")
+def listar_programas():
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM programas ORDER BY tipo, nombre").fetchall()
+    return [dict(r) for r in rows]
+
+@router.post("/programas", status_code=201)
+def crear_programa(body: ProgramaIn):
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO programas (nombre, tipo, descripcion) VALUES (?,?,?)",
+            (body.nombre, body.tipo, body.descripcion),
+        )
+        row = conn.execute("SELECT * FROM programas WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return dict(row)
+
+@router.put("/programas/{programa_id}")
+def editar_programa(programa_id: int, body: ProgramaIn):
+    with db() as conn:
+        conn.execute(
+            "UPDATE programas SET nombre=?, tipo=?, descripcion=? WHERE id=?",
+            (body.nombre, body.tipo, body.descripcion, programa_id),
+        )
+        row = conn.execute("SELECT * FROM programas WHERE id = ?", (programa_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Programa no encontrado")
+    return dict(row)
+
+@router.delete("/programas/{programa_id}", status_code=204)
+def eliminar_programa(programa_id: int):
+    with db() as conn:
+        conn.execute("DELETE FROM programas WHERE id = ?", (programa_id,))
+
+
 # ── Semestres ─────────────────────────────────────────────────────
 
 @router.get("/semestres")
@@ -60,8 +102,8 @@ def listar_semestres():
 def crear_semestre(body: SemestreIn):
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO semestres (nombre, orden) VALUES (?, ?)",
-            (body.nombre, body.orden),
+            "INSERT INTO semestres (nombre, orden, programa_id) VALUES (?,?,?)",
+            (body.nombre, body.orden, body.programa_id),
         )
         row = conn.execute("SELECT * FROM semestres WHERE id = ?", (cur.lastrowid,)).fetchone()
     return dict(row)
@@ -70,8 +112,8 @@ def crear_semestre(body: SemestreIn):
 def editar_semestre(semestre_id: int, body: SemestreIn):
     with db() as conn:
         conn.execute(
-            "UPDATE semestres SET nombre = ?, orden = ? WHERE id = ?",
-            (body.nombre, body.orden, semestre_id),
+            "UPDATE semestres SET nombre=?, orden=?, programa_id=? WHERE id=?",
+            (body.nombre, body.orden, body.programa_id, semestre_id),
         )
         row = conn.execute("SELECT * FROM semestres WHERE id = ?", (semestre_id,)).fetchone()
     if row is None:
@@ -300,17 +342,48 @@ def eliminar_referencia(ref_id: int):
         conn.execute("DELETE FROM referencias_rapidas WHERE id = ?", (ref_id,))
 
 
-# ── Vista completa de semestres con materias ──────────────────────
+# ── Vista completa: programas → semestres → materias ─────────────
 
 @router.get("/estructura")
 def estructura_completa():
     with db() as conn:
-        semestres = [dict(r) for r in conn.execute("SELECT * FROM semestres ORDER BY orden, creado_at").fetchall()]
-        materias  = [dict(r) for r in conn.execute("SELECT * FROM materias ORDER BY nombre").fetchall()]
+        programas = [dict(r) for r in conn.execute(
+            "SELECT * FROM programas ORDER BY tipo, nombre"
+        ).fetchall()]
+        semestres = [dict(r) for r in conn.execute(
+            "SELECT * FROM semestres ORDER BY programa_id, orden, creado_at"
+        ).fetchall()]
+        materias = [dict(r) for r in conn.execute(
+            "SELECT * FROM materias ORDER BY nombre"
+        ).fetchall()]
+
+    # Materias por semestre
     por_semestre: dict[int, list] = {s["id"]: [] for s in semestres}
     for m in materias:
         if m["semestre_id"] in por_semestre:
             por_semestre[m["semestre_id"]].append(m)
     for s in semestres:
         s["materias"] = por_semestre[s["id"]]
-    return semestres
+
+    # Semestres por programa
+    por_programa: dict[int | None, list] = {p["id"]: [] for p in programas}
+    por_programa[None] = []
+    for s in semestres:
+        pid = s.get("programa_id")
+        bucket = pid if pid in por_programa else None
+        por_programa[bucket].append(s)
+    for p in programas:
+        p["semestres"] = por_programa[p["id"]]
+
+    # Semestres huérfanos (sin programa) como grupo extra
+    huerfanos = por_programa.get(None, [])
+    if huerfanos:
+        programas.append({
+            "id": None,
+            "nombre": "Sin programa",
+            "tipo": "otro",
+            "descripcion": "",
+            "semestres": huerfanos,
+        })
+
+    return programas

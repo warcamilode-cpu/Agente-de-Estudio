@@ -67,14 +67,16 @@ function toast(msg, ms = 2500) {
   _toastTimer = setTimeout(() => el.classList.remove("show"), ms);
 }
 
-// ── Materias: cache compartido (desde cuaderno/estructura) ──────
-let _estructura = [];   // [{id, nombre, materias: [{id, nombre, emoji, color}]}]
+// ── Estructura: cache compartido (programas → semestres → materias)
+let _estructura = [];   // [{id, nombre, tipo, semestres: [{id, nombre, materias: [...]}]}]
 let _materias   = [];   // lista plana de todas las materias
 
 async function cargarEstructura() {
   try {
     _estructura = await api("GET", "/cuaderno/estructura");
-    _materias = _estructura.flatMap(s => s.materias || []);
+    _materias = _estructura.flatMap(p =>
+      (p.semestres || []).flatMap(s => s.materias || [])
+    );
   } catch {
     _estructura = [];
     _materias = [];
@@ -83,7 +85,6 @@ async function cargarEstructura() {
 }
 
 function _poblarSelects() {
-  // IDs de selects que muestran materias
   const filtroIds = ["chat-materia", "fc-filtro-materia", "docs-filtro-materia"];
   const modalIds  = ["mc-materia", "docs-materia"];
 
@@ -107,18 +108,20 @@ function _poblarSelects() {
 }
 
 function _poblarOpcionesMaterias(sel) {
-  _estructura.forEach(sem => {
-    const mats = sem.materias || [];
-    if (!mats.length) return;
-    const grp = document.createElement("optgroup");
-    grp.label = sem.nombre;
-    mats.forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = `${m.emoji || "📚"} ${m.nombre}`;
-      grp.appendChild(opt);
+  _estructura.forEach(prog => {
+    (prog.semestres || []).forEach(sem => {
+      const mats = sem.materias || [];
+      if (!mats.length) return;
+      const grp = document.createElement("optgroup");
+      grp.label = `${prog.nombre} › ${sem.nombre}`;
+      mats.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = `${m.emoji || "📚"} ${m.nombre}`;
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
     });
-    sel.appendChild(grp);
   });
 }
 
