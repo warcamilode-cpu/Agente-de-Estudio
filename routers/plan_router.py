@@ -94,11 +94,7 @@ Luego un párrafo corto con el diagnóstico general (2-3 líneas máximo). Sin s
     return resp
 
 
-@router.post("/generar")
-def generar_plan():
-    contexto = _recopilar_contexto()
-
-    system_plan = """Eres el agente Planificador de Shaula, tutora de estudio personal.
+SYSTEM_PLAN = """Eres el agente Planificador de Shaula, tutora de estudio personal.
 Recibís un diagnóstico de dominio del agente Evaluador y el inventario de materiales del estudiante.
 Tu tarea es crear un plan de estudio para los próximos 7 días.
 
@@ -111,28 +107,33 @@ Reglas:
 - Formato: Markdown por día (### Lunes 19 may, etc.) con tabla de bloques por día.
 - Sé específico y realista. No prometas más de lo que un estudiante promedio puede cumplir."""
 
-    def _generar():
-        # Fase 1: Evaluación (síncrona)
-        yield f'data: {json.dumps({"type": "fase", "msg": "⚙️ Evaluando tu dominio en cada materia…"})}\n\n'
-        try:
-            evaluacion = _evaluar_dominio(contexto)
-        except Exception as e:
-            evaluacion = f"_(Error en evaluación: {e})_"
-        yield f'data: {json.dumps({"type": "eval", "contenido": evaluacion})}\n\n'
 
-        # Fase 2: Plan (streaming)
-        yield f'data: {json.dumps({"type": "fase", "msg": "📅 Generando plan personalizado…"})}\n\n'
-        mensaje_plan = (
-            f"Diagnóstico de dominio del agente Evaluador:\n\n{evaluacion}\n\n"
-            f"---\n\nInventario completo del estudiante:\n\n{contexto}\n\n"
-            "Con base en este diagnóstico, generá el plan de estudio para los próximos 7 días."
-        )
+@router.post("/generar")
+def generar_plan():
+    # Ambas llamadas síncronas a la API corren aquí, en el threadpool de FastAPI,
+    # NO dentro del generador SSE (que corre en el event loop y no puede bloquearse).
+    contexto = _recopilar_contexto()
+
+    try:
+        evaluacion = _evaluar_dominio(contexto)
+    except Exception as e:
+        evaluacion = f"_(No se pudo evaluar el dominio: {e})_"
+
+    mensaje_plan = (
+        f"Diagnóstico de dominio del agente Evaluador:\n\n{evaluacion}\n\n"
+        f"---\n\nInventario completo del estudiante:\n\n{contexto}\n\n"
+        "Con base en este diagnóstico, generá el plan de estudio para los próximos 7 días."
+    )
+
+    def _generar():
+        # Envía la evaluación ya calculada
+        yield f'data: {json.dumps({"type": "eval", "contenido": evaluacion})}\n\n'
+        # Transmite el plan en streaming
         for chunk in llm_client.preguntar_stream(
-            system_plan,
+            SYSTEM_PLAN,
             [{"role": "user", "content": mensaje_plan}],
         ):
             yield f"data: {json.dumps(chunk)}\n\n"
-
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(_generar(), media_type="text/event-stream")
