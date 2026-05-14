@@ -146,5 +146,5 @@ def _actualizar_titulo_si_es_primero(session_id: str, mensaje: str, historial: l
 
 
 def _construir_prompt(mensaje: str, topic_id: int | None) -> str:
-    contexto, _ = context_builder.buscar_notas(mensaje, topic_id)
+    contexto, _ = context_builder.construir_contexto(mensaje, topic_id)
     return context_builder.construir_system_prompt(contexto)

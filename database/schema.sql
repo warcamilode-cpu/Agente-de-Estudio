@@ -39,6 +39,19 @@ CREATE TABLE IF NOT EXISTS sesiones_estudio (
     iniciada_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_notas_topic      ON notas(topic_id);
+CREATE TABLE IF NOT EXISTS documentos (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id        INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+    titulo          TEXT NOT NULL,
+    tipo            TEXT NOT NULL,
+    archivo_nombre  TEXT NOT NULL,
+    archivo_path    TEXT NOT NULL,
+    contenido_texto TEXT DEFAULT '',
+    tags            TEXT DEFAULT '',
+    creado_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notas_topic       ON notas(topic_id);
 CREATE INDEX IF NOT EXISTS idx_flashcards_repaso ON flashcards(proximo_repaso);
 CREATE INDEX IF NOT EXISTS idx_flashcards_topic  ON flashcards(topic_id);
+CREATE INDEX IF NOT EXISTS idx_documentos_topic  ON documentos(topic_id);

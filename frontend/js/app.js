@@ -1,6 +1,6 @@
 // Router de tabs y utilidades globales
 
-const TABS = ["chat", "temas", "notas", "flashcards", "dashboard"];
+const TABS = ["chat", "temas", "notas", "flashcards", "documentos", "plan", "dashboard"];
 
 document.querySelectorAll("nav button").forEach(btn => {
   btn.addEventListener("click", () => cambiarTab(btn.dataset.tab));
@@ -16,6 +16,7 @@ function cambiarTab(nombre) {
   if (nombre === "temas")      cargarTemas();
   if (nombre === "notas")      cargarNotas();
   if (nombre === "flashcards") cargarFlashcards();
+  if (nombre === "documentos") cargarDocumentos();
   if (nombre === "dashboard")  cargarDashboard();
 }
 
@@ -56,9 +57,9 @@ async function cargarTopics() {
 
 function _poblarSelects() {
   const todosIds = [
-    "chat-topic", "notas-filtro-topic", "fc-filtro-topic", "mn-topic", "mc-topic",
+    "chat-topic", "notas-filtro-topic", "fc-filtro-topic", "docs-filtro-topic", "mn-topic", "mc-topic",
   ];
-  const esFiltro = new Set(["chat-topic", "notas-filtro-topic", "fc-filtro-topic"]);
+  const esFiltro = new Set(["chat-topic", "notas-filtro-topic", "fc-filtro-topic", "docs-filtro-topic"]);
 
   todosIds.forEach(id => {
     const sel = document.getElementById(id);

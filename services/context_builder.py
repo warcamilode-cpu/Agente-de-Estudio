@@ -2,12 +2,11 @@ from database.connection import db
 
 
 def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[str, int]:
-    """Busca notas relevantes por LIKE y devuelve (texto_contexto, cantidad_encontrada)."""
     terminos = mensaje.lower().split()
     condiciones = []
     params: list = []
 
-    for t in terminos[:5]:  # máximo 5 términos para no sobrecargar la query
+    for t in terminos[:5]:
         condiciones.append("(LOWER(titulo) LIKE ? OR LOWER(contenido) LIKE ? OR LOWER(tags) LIKE ?)")
         like = f"%{t}%"
         params.extend([like, like, like])
@@ -22,12 +21,7 @@ def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[s
 
     with db() as conn:
         rows = conn.execute(
-            f"""
-            SELECT titulo, contenido, tags
-            FROM notas
-            WHERE {where}
-            LIMIT ?
-            """,
+            f"SELECT titulo, contenido, tags FROM notas WHERE {where} LIMIT ?",
             params,
         ).fetchall()
 
@@ -40,6 +34,60 @@ def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[s
         fragmentos.append(f"### {r['titulo']}{tags}\n{r['contenido']}")
 
     return "\n\n---\n\n".join(fragmentos), len(rows)
+
+
+def buscar_documentos(mensaje: str, topic_id: int | None, limite: int = 3) -> tuple[str, int]:
+    terminos = mensaje.lower().split()
+    condiciones = []
+    params: list = []
+
+    for t in terminos[:5]:
+        condiciones.append(
+            "(LOWER(titulo) LIKE ? OR LOWER(contenido_texto) LIKE ? OR LOWER(tags) LIKE ?)"
+        )
+        like = f"%{t}%"
+        params.extend([like, like, like])
+
+    where = " OR ".join(condiciones) if condiciones else "1=1"
+
+    if topic_id is not None:
+        where = f"topic_id = ? AND ({where})"
+        params = [topic_id] + params
+
+    params.append(limite)
+
+    with db() as conn:
+        rows = conn.execute(
+            f"SELECT titulo, contenido_texto, tags, tipo FROM documentos WHERE {where} LIMIT ?",
+            params,
+        ).fetchall()
+
+    if not rows:
+        return "", 0
+
+    fragmentos = []
+    for r in rows:
+        tags = f" [tags: {r['tags']}]" if r["tags"] else ""
+        # Solo los primeros 1500 chars del texto para no saturar el contexto
+        texto = (r["contenido_texto"] or "")[:1500]
+        if len(r["contenido_texto"] or "") > 1500:
+            texto += "\n[... texto truncado ...]"
+        fragmentos.append(f"### {r['titulo']} ({r['tipo'].upper()}){tags}\n{texto}")
+
+    return "\n\n---\n\n".join(fragmentos), len(rows)
+
+
+def construir_contexto(mensaje: str, topic_id: int | None) -> str:
+    notas_txt, n_notas = buscar_notas(mensaje, topic_id, limite=4)
+    docs_txt, n_docs = buscar_documentos(mensaje, topic_id, limite=3)
+
+    partes = []
+    if notas_txt:
+        partes.append("## Apuntes del estudiante\n\n" + notas_txt)
+    if docs_txt:
+        partes.append("## Documentos / lecturas del estudiante\n\n" + docs_txt)
+
+    return "\n\n".join(partes), n_notas + n_docs
 
 
 def construir_system_prompt(contexto: str) -> str:
@@ -73,9 +121,9 @@ Propón una tarea concreta y pequeña que el estudiante pueda resolver en el cha
     if contexto:
         return (
             f"{base}\n\n"
-            "## Notas del estudiante como contexto\n\n"
-            "Tienes acceso a las siguientes notas del estudiante. Úsalas para personalizar las explicaciones y ejemplos. "
-            "Si el tema está en las notas, basate en ellas. Si no, usa tu conocimiento general:\n\n"
+            "## Contexto del estudiante\n\n"
+            "Tenés acceso al siguiente material del estudiante (apuntes y documentos). "
+            "Usalo para personalizar las explicaciones. Si el tema está aquí, basate en este material:\n\n"
             f"{contexto}"
         )
     return base

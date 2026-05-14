@@ -13,6 +13,8 @@
   <button data-tab="temas">📚 Temas</button>
   <button data-tab="notas">📝 Notas</button>
   <button data-tab="flashcards">🃏 Flashcards</button>
+  <button data-tab="documentos">📁 Documentos</button>
+  <button data-tab="plan">🗺️ Plan</button>
   <button data-tab="dashboard">📊 Dashboard</button>
 </nav>
 
@@ -89,6 +91,27 @@
 
     <!-- lista -->
     <div id="fc-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
+  </section>
+
+  <!-- ── DOCUMENTOS ── -->
+  <section id="tab-documentos" class="section">
+    <div class="row">
+      <select id="docs-filtro-topic"><option value="">Todos los temas</option></select>
+      <button class="btn btn-primary" id="btn-subir-archivo">+ Subir documento</button>
+    </div>
+    <div id="docs-lista" style="display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem;"></div>
+  </section>
+
+  <!-- ── PLAN ── -->
+  <section id="tab-plan" class="section">
+    <div class="row">
+      <h2 style="flex:1">Plan de estudio semanal</h2>
+      <button class="btn btn-primary" id="btn-generar-plan">Generar plan con Shaula</button>
+    </div>
+    <p id="plan-fecha" style="color:var(--text-muted); font-size:.85rem; margin:.25rem 0 1rem;"></p>
+    <div id="plan-contenido" class="card" style="min-height:120px; line-height:1.7;">
+      <p style="color:var(--text-muted)">Presioná "Generar plan" y Shaula analizará tus temas, flashcards pendientes y documentos para armar tu semana.</p>
+    </div>
   </section>
 
   <!-- ── DASHBOARD ── -->
@@ -186,6 +209,44 @@
   </div>
 </div>
 
+<!-- ── MODAL SUBIR DOCUMENTO ── -->
+<div class="modal-overlay" id="modal-doc">
+  <div class="modal">
+    <h2>Subir documento</h2>
+    <div>
+      <label>Archivo (PDF, DOCX, TXT)</label>
+      <input id="md-archivo" type="file" accept=".pdf,.docx,.doc,.txt">
+    </div>
+    <div>
+      <label>Título</label>
+      <input id="md-titulo" type="text" placeholder="Ej: Guía de tutela — Semana 3">
+    </div>
+    <div>
+      <label>Tema</label>
+      <select id="md-topic"></select>
+    </div>
+    <div>
+      <label>Tags (separados por coma)</label>
+      <input id="md-tags" type="text" placeholder="lectura, guia, parcial…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalDoc()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDocumento()">Subir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL VER TEXTO DOCUMENTO ── -->
+<div class="modal-overlay" id="modal-doc-texto">
+  <div class="modal" style="max-width:720px;">
+    <h2 id="mdt-titulo"></h2>
+    <pre id="mdt-contenido" style="white-space:pre-wrap; max-height:60dvh; overflow-y:auto; font-size:.85rem; background:var(--surface); padding:.75rem; border-radius:.5rem;"></pre>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalDocTexto()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
@@ -197,6 +258,8 @@
 <script src="/static/js/temas.js"></script>
 <script src="/static/js/notas.js"></script>
 <script src="/static/js/flashcards.js"></script>
+<script src="/static/js/documentos.js"></script>
+<script src="/static/js/plan.js"></script>
 <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

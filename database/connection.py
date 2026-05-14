@@ -35,6 +35,22 @@ def _migraciones(conn: sqlite3.Connection) -> None:
         )
 
     tablas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "documentos" not in tablas:
+        conn.executescript("""
+            CREATE TABLE documentos (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic_id        INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+                titulo          TEXT NOT NULL,
+                tipo            TEXT NOT NULL,
+                archivo_nombre  TEXT NOT NULL,
+                archivo_path    TEXT NOT NULL,
+                contenido_texto TEXT DEFAULT '',
+                tags            TEXT DEFAULT '',
+                creado_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_documentos_topic ON documentos(topic_id);
+        """)
+
     if "sesiones_chat" not in tablas:
         conn.executescript("""
             CREATE TABLE sesiones_chat (
