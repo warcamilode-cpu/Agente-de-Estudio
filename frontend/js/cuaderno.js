@@ -1,6 +1,6 @@
 // ── Cuaderno — Sistema Cornell ────────────────────────────────────
+// _estructura y _materias viven en app.js (scope global compartido)
 
-let _estructura  = [];    // programas → semestres → materias
 let _matActiva   = null;
 let _claseActiva = null;
 let _apuntesTimer = null;
@@ -11,7 +11,7 @@ const TIPO_ICON = { pregrado: "🎓", posgrado: "🏛️", otro: "📋" };
 // ── Punto de entrada ─────────────────────────────────────────────
 
 async function cargarCuaderno() {
-  _estructura = await api("GET", "/cuaderno/estructura");
+  await cargarEstructura();   // popula _estructura y _materias (app.js)
   _renderNav();
   if (!_matActiva && !_claseActiva) _renderBienvenida();
 }
@@ -416,7 +416,6 @@ async function guardarPrograma() {
   }
   cerrarModalPrograma();
   await cargarCuaderno();
-  await cargarEstructura();
 }
 
 function _editarPrograma(id) { _abrirModalPrograma(id); }
@@ -430,7 +429,6 @@ async function _eliminarPrograma(id) {
     if (sigue) { _matActiva = null; _claseActiva = null; }
   }
   await cargarCuaderno();
-  await cargarEstructura();
   if (!_matActiva) _renderBienvenida();
 }
 
@@ -463,7 +461,6 @@ async function guardarSemestre() {
   }
   cerrarModalSemestre();
   await cargarCuaderno();
-  await cargarEstructura();
 }
 
 function _editarSemestre(id, nombreActual, programaId) {
@@ -479,7 +476,6 @@ async function _eliminarSemestre(id) {
     if (enSem) { _matActiva = null; _claseActiva = null; }
   }
   await cargarCuaderno();
-  await cargarEstructura();
   if (!_matActiva) _renderBienvenida();
 }
 
@@ -537,7 +533,6 @@ async function guardarMateria() {
   }
   cerrarModalCuadernoMateria();
   await cargarCuaderno();
-  await cargarEstructura();
 }
 
 async function _eliminarMateria(id) {
@@ -545,7 +540,6 @@ async function _eliminarMateria(id) {
   await api("DELETE", `/cuaderno/materias/${id}`);
   if (_matActiva?.id === id) { _matActiva = null; _claseActiva = null; }
   await cargarCuaderno();
-  await cargarEstructura();
   if (!_matActiva) _renderBienvenida();
 }
 
