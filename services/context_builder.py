@@ -86,36 +86,94 @@ def _buscar_referencias(mensaje: str, materia_id: int | None, limite: int = 6) -
     return "\n".join(fragmentos), len(rows)
 
 
-def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 3) -> tuple[str, int]:
-    terminos = mensaje.lower().split()
-    where, params = _like_where(
-        terminos, ["LOWER(titulo)", "LOWER(contenido_texto)", "LOWER(tags)"]
-    )
+def _bm25_score(texto: str, terminos: list[str]) -> float:
+    """Puntaje BM25-lite: frecuencia de coincidencias normalizada por longitud."""
+    if not texto or not terminos:
+        return 0.0
+    texto_lower = texto.lower()
+    palabras = texto_lower.split()
+    n = max(len(palabras), 1)
+    k1, b = 1.5, 0.75
+    avg_len = 150  # longitud promedio estimada de un chunk en palabras
+    score = 0.0
+    for t in terminos:
+        tf = texto_lower.count(t)
+        if tf > 0:
+            score += (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * n / avg_len))
+    return score
 
+
+def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 5) -> tuple[str, int]:
+    terminos = [t for t in mensaje.lower().split() if len(t) > 2]
+
+    # Primero filtrar documentos por materia y título/tags relevantes
+    doc_where = "1=1"
+    doc_params: list = []
     if materia_id is not None:
-        where = f"materia_id = ? AND ({where})"
-        params = [materia_id] + params
-
-    params.append(limite)
+        doc_where = "d.materia_id = ?"
+        doc_params = [materia_id]
 
     with db() as conn:
-        rows = conn.execute(
-            f"SELECT titulo, contenido_texto, tags, tipo FROM documentos WHERE {where} LIMIT ?",
-            params,
+        # Buscar chunks relevantes con BM25
+        chunks_rows = conn.execute(
+            f"""SELECT dc.texto, dc.doc_id, d.titulo, d.tipo, d.tags
+                FROM documento_chunks dc
+                JOIN documentos d ON d.id = dc.doc_id
+                WHERE {doc_where}
+                ORDER BY dc.doc_id, dc.chunk_idx""",
+            doc_params,
         ).fetchall()
 
-    if not rows:
+        # Fallback si no hay chunks (documentos sin procesar)
+        if not chunks_rows:
+            where, params = _like_where(
+                terminos or [""], ["LOWER(titulo)", "LOWER(contenido_texto)", "LOWER(tags)"]
+            )
+            if materia_id is not None:
+                where = f"materia_id = ? AND ({where})"
+                params = [materia_id] + params
+            params.append(3)
+            rows = conn.execute(
+                f"SELECT titulo, contenido_texto, tags, tipo FROM documentos WHERE {where} LIMIT ?",
+                params,
+            ).fetchall()
+            if not rows:
+                return "", 0
+            fragmentos = []
+            for r in rows:
+                tags = f" [tags: {r['tags']}]" if r["tags"] else ""
+                texto = (r["contenido_texto"] or "")[:1200]
+                fragmentos.append(f"### {r['titulo']} ({r['tipo'].upper()}){tags}\n{texto}")
+            return "\n\n---\n\n".join(fragmentos), len(rows)
+
+    # Puntuar chunks con BM25-lite
+    scored: list[tuple[float, str, str, str, str]] = []
+    for r in chunks_rows:
+        score = _bm25_score(r["texto"], terminos) if terminos else 1.0
+        if score > 0 or not terminos:
+            scored.append((score, r["texto"], r["titulo"], r["tipo"], r["tags"] or ""))
+
+    # Ordenar por score y tomar top N
+    scored.sort(key=lambda x: -x[0])
+    top = scored[:limite]
+
+    if not top:
         return "", 0
 
-    fragmentos = []
-    for r in rows:
-        tags = f" [tags: {r['tags']}]" if r["tags"] else ""
-        texto = (r["contenido_texto"] or "")[:1500]
-        if len(r["contenido_texto"] or "") > 1500:
-            texto += "\n[... texto truncado ...]"
-        fragmentos.append(f"### {r['titulo']} ({r['tipo'].upper()}){tags}\n{texto}")
+    # Agrupar por documento para presentar mejor
+    por_doc: dict[str, list[str]] = {}
+    for _, texto, titulo, tipo, tags in top:
+        clave = f"{titulo}||{tipo}||{tags}"
+        por_doc.setdefault(clave, []).append(texto)
 
-    return "\n\n---\n\n".join(fragmentos), len(rows)
+    fragmentos = []
+    for clave, textos in por_doc.items():
+        titulo, tipo, tags = clave.split("||")
+        tag_str = f" [tags: {tags}]" if tags else ""
+        cuerpo = "\n\n[...]\n\n".join(textos)
+        fragmentos.append(f"### {titulo} ({tipo.upper()}){tag_str}\n{cuerpo}")
+
+    return "\n\n---\n\n".join(fragmentos), len(por_doc)
 
 
 def construir_contexto(mensaje: str, materia_id: int | None) -> tuple[str, int]:

@@ -136,6 +136,18 @@ def _migraciones(conn: sqlite3.Connection) -> None:
     if "sesiones_chat" in tablas and "materia_id" not in columnas_sc:
         conn.execute("ALTER TABLE sesiones_chat ADD COLUMN materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL")
 
+    # Migración: tabla de chunks de documentos para RAG
+    if "documento_chunks" not in tablas:
+        conn.executescript("""
+            CREATE TABLE documento_chunks (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                doc_id    INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                chunk_idx INTEGER NOT NULL,
+                texto     TEXT NOT NULL
+            );
+            CREATE INDEX idx_chunks_doc ON documento_chunks(doc_id);
+        """)
+
     if "sesiones_chat" not in tablas:
         conn.executescript("""
             CREATE TABLE sesiones_chat (

@@ -612,6 +612,136 @@ label {
 }
 
 /* ══════════════════════════════════════
+   DOCUMENTOS — split 25/75
+══════════════════════════════════════ */
+.docs-shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.docs-panel-lista {
+  width: 25%;
+  min-width: 180px;
+  max-width: 300px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.docs-panel-header {
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  padding: .6rem .65rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.docs-hint {
+  font-size: .7rem;
+  color: var(--text-muted);
+  padding: .3rem .75rem;
+  flex-shrink: 0;
+  letter-spacing: .04em;
+}
+
+#docs-lista {
+  flex: 1;
+  overflow-y: auto;
+  padding: .3rem .35rem;
+  display: flex;
+  flex-direction: column;
+  gap: .18rem;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.doc-item:hover { background: var(--surface2); }
+.doc-item.activo { background: var(--accent-soft); }
+.doc-item.activo .doc-item-titulo { color: var(--accent-h); }
+
+.doc-item-icon { font-size: 1rem; flex-shrink: 0; }
+.doc-item-info { flex: 1; min-width: 0; }
+.doc-item-titulo {
+  font-size: .82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.doc-item-meta {
+  font-size: .7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docs-panel-visor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--content-bg);
+}
+
+.docs-visor-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  gap: .75rem;
+  font-size: .9rem;
+}
+
+.docs-visor-header {
+  padding: .6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.docs-visor-titulo {
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--text);
+}
+
+.docs-visor-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  height: 100%;
+}
+
+.docs-texto-render {
+  padding: 1.25rem 1.5rem;
+  max-width: 72ch;
+  line-height: 1.75;
+  font-size: .9rem;
+}
+
+.docs-pre {
+  white-space: pre-wrap;
+  font-family: ui-monospace, monospace;
+  font-size: .8rem;
+  line-height: 1.6;
+  padding: 1.25rem 1.5rem;
+}
+
+/* ══════════════════════════════════════
    CUADERNO
 ══════════════════════════════════════ */
 .cuaderno-shell {
@@ -703,10 +833,11 @@ label {
 .cn-semestre-acciones {
   display: flex;
   gap: .15rem;
-  opacity: 0;
+  opacity: 0.45;
   transition: opacity .15s;
 }
-.cn-semestre-header:hover .cn-semestre-acciones { opacity: 1; }
+.cn-semestre-header:hover .cn-semestre-acciones,
+.cn-programa-header:hover .cn-semestre-acciones { opacity: 1; }
 
 .cn-btn-icon {
   background: none;
@@ -765,7 +896,7 @@ label {
 .cn-materia-acciones {
   display: flex;
   gap: .08rem;
-  opacity: 0;
+  opacity: 0.45;
   transition: opacity .15s;
 }
 .cn-materia-item:hover .cn-materia-acciones { opacity: 1; }

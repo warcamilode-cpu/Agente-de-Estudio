@@ -9,103 +9,130 @@ router = APIRouter(prefix="/plan", tags=["plan"])
 
 def _recopilar_contexto() -> str:
     with db() as conn:
-        topics = conn.execute(
-            "SELECT id, nombre FROM topics WHERE parent_id IS NULL ORDER BY nombre"
+        materias = conn.execute(
+            """SELECT m.id, m.nombre, m.emoji,
+                      s.nombre AS semestre_nombre,
+                      COALESCE(p.nombre, 'Sin programa') AS prog_nombre
+               FROM materias m
+               JOIN semestres s ON s.id = m.semestre_id
+               LEFT JOIN programas p ON p.id = s.programa_id
+               ORDER BY p.nombre, s.nombre, m.nombre"""
         ).fetchall()
 
-        cards_pendientes = conn.execute(
-            """SELECT t.nombre as topic_nombre, COUNT(*) as total
+        cards_por_materia = conn.execute(
+            """SELECT m.nombre AS mat_nombre,
+                      COUNT(*) AS total,
+                      SUM(CASE WHEN f.proximo_repaso <= date('now') THEN 1 ELSE 0 END) AS pendientes,
+                      AVG(f.factor_facilidad) AS ef_prom,
+                      AVG(f.repeticiones) AS rep_prom
                FROM flashcards f
-               LEFT JOIN topics t ON t.id = f.topic_id
-               WHERE f.proximo_repaso <= date('now')
-               GROUP BY f.topic_id""",
+               JOIN materias m ON m.id = f.materia_id
+               GROUP BY f.materia_id""",
         ).fetchall()
-
-        sesiones_recientes = conn.execute(
-            """SELECT tipo, COUNT(*) as total, MAX(iniciada_at) as ultima
-               FROM sesiones_estudio
-               WHERE iniciada_at >= date('now', '-7 days')
-               GROUP BY tipo""",
-        ).fetchall()
-
-        total_notas = conn.execute("SELECT COUNT(*) as n FROM notas").fetchone()["n"]
-        total_docs = conn.execute("SELECT COUNT(*) as n FROM documentos").fetchone()["n"]
-        total_cards = conn.execute("SELECT COUNT(*) as n FROM flashcards").fetchone()["n"]
 
         docs_recientes = conn.execute(
-            """SELECT titulo, tipo, tags FROM documentos
-               ORDER BY creado_at DESC LIMIT 5"""
+            """SELECT d.titulo, d.tipo, d.tags,
+                      COALESCE(m.nombre, 'Sin materia') AS mat_nombre
+               FROM documentos d
+               LEFT JOIN materias m ON m.id = d.materia_id
+               ORDER BY d.creado_at DESC LIMIT 8"""
         ).fetchall()
 
-        notas_recientes = conn.execute(
-            """SELECT titulo, tags FROM notas
-               ORDER BY actualizada_at DESC LIMIT 5"""
-        ).fetchall()
+        total_cards = conn.execute("SELECT COUNT(*) AS n FROM flashcards").fetchone()["n"]
+        total_docs  = conn.execute("SELECT COUNT(*) AS n FROM documentos").fetchone()["n"]
+        total_clases = conn.execute("SELECT COUNT(*) AS n FROM clases").fetchone()["n"]
 
     lineas = [
-        f"- Total de notas: {total_notas}",
-        f"- Total de documentos subidos: {total_docs}",
-        f"- Total de flashcards: {total_cards}",
+        f"- Clases en el cuaderno: {total_clases}",
+        f"- Flashcards totales: {total_cards}",
+        f"- Documentos subidos: {total_docs}",
         "",
-        "**Cursos registrados:**",
+        "**Materias activas:**",
     ]
-    for t in topics:
-        lineas.append(f"  - {t['nombre']}")
+    for m in materias:
+        lineas.append(f"  - {m['emoji']} {m['nombre']} ({m['prog_nombre']} › {m['semestre_nombre']})")
 
-    if cards_pendientes:
-        lineas.append("\n**Flashcards pendientes de repaso hoy:**")
-        for c in cards_pendientes:
-            lineas.append(f"  - {c['topic_nombre'] or 'Sin tema'}: {c['total']} cards")
-
-    if sesiones_recientes:
-        lineas.append("\n**Actividad de los últimos 7 días:**")
-        for s in sesiones_recientes:
-            lineas.append(f"  - {s['tipo']}: {s['total']} sesiones (última: {s['ultima']})")
+    if cards_por_materia:
+        lineas.append("\n**Estadísticas de flashcards por materia:**")
+        for c in cards_por_materia:
+            ef = round(c["ef_prom"] or 2.5, 2)
+            rep = round(c["rep_prom"] or 0, 1)
+            pend = c["pendientes"] or 0
+            lineas.append(
+                f"  - {c['mat_nombre']}: {c['total']} cards, {pend} pendientes hoy, "
+                f"EF promedio={ef} (>2.5=fácil, <2.0=difícil), repeticiones prom={rep}"
+            )
 
     if docs_recientes:
-        lineas.append("\n**Documentos más recientes:**")
+        lineas.append("\n**Documentos y lecturas recientes:**")
         for d in docs_recientes:
             tags = f" [{d['tags']}]" if d["tags"] else ""
-            lineas.append(f"  - {d['titulo']} ({d['tipo'].upper()}){tags}")
-
-    if notas_recientes:
-        lineas.append("\n**Apuntes más recientes:**")
-        for n in notas_recientes:
-            tags = f" [{n['tags']}]" if n["tags"] else ""
-            lineas.append(f"  - {n['titulo']}{tags}")
+            lineas.append(f"  - {d['titulo']} ({d['tipo'].upper()}){tags} — {d['mat_nombre']}")
 
     return "\n".join(lineas)
+
+
+def _evaluar_dominio(contexto: str) -> str:
+    system_eval = """Eres el agente Evaluador de Shaula, tutora de estudio personal.
+Tu única tarea es analizar las estadísticas de estudio del estudiante y emitir un diagnóstico breve de dominio por materia.
+
+Para cada materia con flashcards, evalúa:
+1. **Nivel de dominio** (Inicial / En progreso / Dominado) — basado en EF promedio y repeticiones.
+   - EF < 2.0 o rep < 2 → Inicial
+   - EF 2.0-2.5 o rep 2-4 → En progreso
+   - EF > 2.5 y rep ≥ 5 → Dominado
+2. **Urgencia de repaso** — cuántas cards están pendientes hoy.
+3. **Recomendación puntual** — una línea: qué hacer con esa materia esta semana.
+
+Formato: tabla Markdown con columnas Materia | Dominio | Pendientes hoy | Recomendación.
+Luego un párrafo corto con el diagnóstico general (2-3 líneas máximo). Sin saludos ni relleno."""
+
+    resp = llm_client.preguntar(
+        system_eval,
+        [{"role": "user", "content": f"Aquí están los datos del estudiante:\n\n{contexto}"}],
+    )
+    return resp
 
 
 @router.post("/generar")
 def generar_plan():
     contexto = _recopilar_contexto()
 
-    system_prompt = """Eres Shaula, tutora de estudio personal. Tu tarea ahora es actuar como planificadora de estudio.
-Con base en el inventario de materiales y actividad reciente del estudiante, generá un plan de estudio para los próximos 7 días.
+    system_plan = """Eres el agente Planificador de Shaula, tutora de estudio personal.
+Recibís un diagnóstico de dominio del agente Evaluador y el inventario de materiales del estudiante.
+Tu tarea es crear un plan de estudio para los próximos 7 días.
 
-El plan debe:
-1. Priorizar las flashcards pendientes de repaso (son urgentes por el algoritmo SM-2).
-2. Identificar qué temas tienen más material acumulado y necesitan sesión de repaso.
-3. Sugerir días específicos y bloques de tiempo aproximados (mañana, tarde, noche).
-4. Ser realista: no más de 1-2 horas de estudio por día.
-5. Incluir al menos una sesión de práctica con ejercicios por cada tema activo.
-6. Si hay documentos o lecturas recientes, incluir su revisión en el plan.
-
-Formato de respuesta: Markdown estructurado por día (Lunes a Domingo). Sé específico y accionable."""
-
-    mensaje_usuario = f"""Este es el inventario actual de mi material de estudio:
-
-{contexto}
-
-Generá mi plan de estudio para esta semana."""
+Reglas:
+- Priorizá las materias con más cards pendientes y dominio bajo.
+- Bloques de 30-60 min por materia por día. Máximo 2 horas totales/día.
+- Incluí días de descanso real (sin estudio o solo repaso ligero de 15 min).
+- Para cada bloque indicá: materia, tipo de actividad (repaso de cards, lectura, apuntes Cornell, ejercicio práctico) y objetivo concreto.
+- Si hay documentos recientes, incluilos en el plan de lectura.
+- Formato: Markdown por día (### Lunes 19 may, etc.) con tabla de bloques por día.
+- Sé específico y realista. No prometas más de lo que un estudiante promedio puede cumplir."""
 
     def _generar():
+        # Fase 1: Evaluación (síncrona)
+        yield f'data: {json.dumps({"type": "fase", "msg": "⚙️ Evaluando tu dominio en cada materia…"})}\n\n'
+        try:
+            evaluacion = _evaluar_dominio(contexto)
+        except Exception as e:
+            evaluacion = f"_(Error en evaluación: {e})_"
+        yield f'data: {json.dumps({"type": "eval", "contenido": evaluacion})}\n\n'
+
+        # Fase 2: Plan (streaming)
+        yield f'data: {json.dumps({"type": "fase", "msg": "📅 Generando plan personalizado…"})}\n\n'
+        mensaje_plan = (
+            f"Diagnóstico de dominio del agente Evaluador:\n\n{evaluacion}\n\n"
+            f"---\n\nInventario completo del estudiante:\n\n{contexto}\n\n"
+            "Con base en este diagnóstico, generá el plan de estudio para los próximos 7 días."
+        )
         for chunk in llm_client.preguntar_stream(
-            system_prompt,
-            [{"role": "user", "content": mensaje_usuario}],
+            system_plan,
+            [{"role": "user", "content": mensaje_plan}],
         ):
             yield f"data: {json.dumps(chunk)}\n\n"
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(_generar(), media_type="text/event-stream")

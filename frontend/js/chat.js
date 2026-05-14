@@ -14,8 +14,9 @@ nuevaSesionChat();
 
 async function nuevaSesionChat() {
   const data = await api("POST", "/ai/chat/nueva-sesion");
-  _sessionId     = data.session_id;
-  _primerMensaje = true;
+  _sessionId        = data.session_id;
+  _primerMensaje    = true;
+  _tokensAcumulados = 0;
   mensajesEl.innerHTML = `
     <div class="msg assistant shaula-intro">
       Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
@@ -140,6 +141,9 @@ chatForm.addEventListener("submit", async e => {
   burbuja.innerHTML = marked.parse(acumulado);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
 
+  _registrarTokens(texto, acumulado);
+  document.getElementById("chat-token-count").textContent = "";
+
   // Actualiza el título de la barra con el primer mensaje
   if (_primerMensaje) {
     _primerMensaje = false;
@@ -147,6 +151,30 @@ chatForm.addEventListener("submit", async e => {
       texto.length > 60 ? texto.slice(0, 60) + "…" : texto;
   }
 });
+
+// ── Contador de tokens ────────────────────────────────────────────
+
+let _tokensAcumulados = 0;
+
+(function _initTokenCounter() {
+  const counter = document.getElementById("chat-token-count");
+  if (!counter) return;
+
+  chatInput.addEventListener("input", () => {
+    const estimado = Math.round(chatInput.value.length / 4);
+    counter.textContent = estimado > 0 ? `~${estimado} tok` : "";
+  });
+})();
+
+function _registrarTokens(textoUsuario, textoAsistente) {
+  const tokUser = Math.round(textoUsuario.length / 4);
+  const tokAsis = Math.round(textoAsistente.length / 4);
+  _tokensAcumulados += tokUser + tokAsis;
+  const counter = document.getElementById("chat-token-count");
+  if (counter && _tokensAcumulados > 0) {
+    counter.title = `Sesión: ~${_tokensAcumulados} tokens acumulados`;
+  }
+}
 
 // ── Helpers ──────────────────────────────────────────────────────
 

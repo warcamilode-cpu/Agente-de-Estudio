@@ -1,5 +1,7 @@
 // Módulo de repositorio de documentos
 
+let _docActivoId = null;
+
 async function cargarDocumentos() {
   const materiaId = document.getElementById("docs-filtro-materia")?.value || "";
   const ruta = materiaId ? `/documentos?materia_id=${materiaId}` : "/documentos";
@@ -10,22 +12,18 @@ async function cargarDocumentos() {
 function _renderDocumentos(docs) {
   const lista = document.getElementById("docs-lista");
   if (!docs.length) {
-    lista.innerHTML = '<p style="color:var(--text-muted)">No hay documentos todavía. Subí una lectura, guía o presentación en PDF, TXT, MD o JSON.</p>';
+    lista.innerHTML = '<p style="color:var(--text-muted); font-size:.8rem; padding:.5rem .25rem;">Sin documentos todavía.</p>';
     return;
   }
   lista.innerHTML = docs.map(d => `
-    <div class="card" style="display:flex; align-items:center; gap:1rem;">
-      <span style="font-size:1.6rem">${_iconTipo(d.tipo)}</span>
-      <div style="flex:1; min-width:0;">
-        <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.titulo}</div>
-        <div style="font-size:.8rem; color:var(--text-muted);">
-          ${d.tipo.toUpperCase()}${d.tags ? ' · ' + d.tags : ''} · ${_fechaCorta(d.creado_at)}
-        </div>
+    <div class="doc-item${_docActivoId === d.id ? ' activo' : ''}" data-id="${d.id}"
+         onclick="verDocumento(${d.id},'${_escDoc(d.titulo)}','${d.tipo}')">
+      <span class="doc-item-icon">${_iconTipo(d.tipo)}</span>
+      <div class="doc-item-info">
+        <div class="doc-item-titulo">${d.titulo}</div>
+        <div class="doc-item-meta">${d.tipo.toUpperCase()}${d.tags ? ' · ' + d.tags : ''} · ${_fechaCorta(d.creado_at)}</div>
       </div>
-      <div style="display:flex; gap:.4rem; flex-shrink:0;">
-        <button class="btn btn-secondary btn-sm" onclick="verDocumento(${d.id},'${_escDoc(d.titulo)}','${d.tipo}')">👁 Ver</button>
-        <button class="btn btn-danger btn-sm" onclick="eliminarDoc(${d.id})">Eliminar</button>
-      </div>
+      <button class="cn-btn-icon" title="Eliminar" onclick="event.stopPropagation();eliminarDoc(${d.id})">✕</button>
     </div>`).join("");
 }
 
@@ -36,45 +34,51 @@ function _iconTipo(tipo) {
 function _fechaCorta(ts) { return ts ? ts.slice(0, 10) : ""; }
 function _escDoc(str)    { return String(str||"").replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
-// ── Visor embebido ───────────────────────────────────────────────
+// ── Visor inline ─────────────────────────────────────────────────
 
 async function verDocumento(id, titulo, tipo) {
-  const modal    = document.getElementById("modal-doc-visor");
-  const tituloEl = document.getElementById("mdv-titulo");
-  const cuerpo   = document.getElementById("mdv-cuerpo");
+  _docActivoId = id;
 
-  tituloEl.textContent = titulo;
-  cuerpo.innerHTML = '<p style="color:var(--text-muted)">Cargando…</p>';
-  modal.classList.add("open");
+  // Marca item activo en la lista
+  document.querySelectorAll(".doc-item").forEach(el =>
+    el.classList.toggle("activo", parseInt(el.dataset.id) === id)
+  );
+
+  const visor = document.getElementById("docs-visor");
+  visor.innerHTML = `
+    <div class="docs-visor-header">
+      <span class="docs-visor-titulo">${titulo}</span>
+    </div>
+    <div class="docs-visor-cuerpo" id="docs-visor-cuerpo">
+      <p style="color:var(--text-muted); padding:1rem;">Cargando…</p>
+    </div>`;
+
+  const cuerpo = document.getElementById("docs-visor-cuerpo");
 
   if (tipo === "pdf") {
-    cuerpo.innerHTML = `<iframe src="/documentos/${id}/archivo" style="width:100%; height:70dvh; border:none; border-radius:8px;"></iframe>`;
+    cuerpo.innerHTML = `<iframe src="/documentos/${id}/archivo"
+      style="width:100%; height:100%; border:none; display:block;"></iframe>`;
   } else {
     try {
       const resp  = await fetch(`/documentos/${id}/archivo`);
       const texto = await resp.text();
       if (tipo === "md") {
-        cuerpo.innerHTML = `<div class="msg assistant" style="max-width:100%; background:var(--surface2);">${marked.parse(texto)}</div>`;
+        cuerpo.innerHTML = `<div class="docs-texto-render">${marked.parse(texto)}</div>`;
       } else if (tipo === "json") {
-        let formateado;
-        try { formateado = JSON.stringify(JSON.parse(texto), null, 2); } catch { formateado = texto; }
-        cuerpo.innerHTML = `<pre style="white-space:pre-wrap; font-family:ui-monospace,monospace; font-size:.82rem; line-height:1.6;">${_htmlEsc(formateado)}</pre>`;
+        let fmt;
+        try { fmt = JSON.stringify(JSON.parse(texto), null, 2); } catch { fmt = texto; }
+        cuerpo.innerHTML = `<pre class="docs-pre">${_htmlEsc(fmt)}</pre>`;
       } else {
-        cuerpo.innerHTML = `<pre style="white-space:pre-wrap; font-size:.875rem; line-height:1.7;">${_htmlEsc(texto)}</pre>`;
+        cuerpo.innerHTML = `<pre class="docs-pre">${_htmlEsc(texto)}</pre>`;
       }
     } catch (e) {
-      cuerpo.innerHTML = `<p style="color:var(--danger)">Error al cargar: ${e.message}</p>`;
+      cuerpo.innerHTML = `<p style="color:var(--danger); padding:1rem;">Error al cargar: ${e.message}</p>`;
     }
   }
 }
 
 function _htmlEsc(str) {
   return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-
-function cerrarVisorDoc() {
-  document.getElementById("modal-doc-visor").classList.remove("open");
-  document.getElementById("mdv-cuerpo").innerHTML = "";
 }
 
 // ── Subida ───────────────────────────────────────────────────────
@@ -129,6 +133,14 @@ async function subirDocumento() {
 async function eliminarDoc(id) {
   if (!confirm("¿Eliminar este documento?")) return;
   await api("DELETE", `/documentos/${id}`);
+  if (_docActivoId === id) {
+    _docActivoId = null;
+    document.getElementById("docs-visor").innerHTML = `
+      <div class="docs-visor-vacio">
+        <div style="font-size:2.5rem">📄</div>
+        <p>Seleccioná un documento para verlo aquí.</p>
+      </div>`;
+  }
   toast("Documento eliminado");
   cargarDocumentos();
 }

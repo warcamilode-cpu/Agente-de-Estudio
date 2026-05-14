@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from database.connection import db
-from services.extractor import extraer_texto
+from services.extractor import extraer_texto, chunkear_texto
 
 router = APIRouter(prefix="/documentos", tags=["documentos"])
 
@@ -95,7 +95,17 @@ async def subir_documento(
             "INSERT INTO documentos (materia_id, titulo, tipo, archivo_nombre, archivo_path, contenido_texto, tags) VALUES (?,?,?,?,?,?,?)",
             (materia_id_val, titulo, tipo, archivo.filename, nombre_unico, texto, tags),
         )
-        row = conn.execute("SELECT * FROM documentos WHERE id = ?", (cur.lastrowid,)).fetchone()
+        doc_id = cur.lastrowid
+
+        # Almacenar chunks para RAG
+        chunks = chunkear_texto(texto)
+        for idx, chunk in enumerate(chunks):
+            conn.execute(
+                "INSERT INTO documento_chunks (doc_id, chunk_idx, texto) VALUES (?,?,?)",
+                (doc_id, idx, chunk),
+            )
+
+        row = conn.execute("SELECT * FROM documentos WHERE id = ?", (doc_id,)).fetchone()
     return dict(row)
 
 
