@@ -36,7 +36,7 @@ def extraer_texto(archivo_path: str) -> str:
         return _extraer_pdf(path)
     if sufijo in (".docx", ".doc"):
         return _extraer_docx(path)
-    if sufijo == ".txt":
+    if sufijo in (".txt", ".md", ".json"):
         return path.read_text(encoding="utf-8", errors="ignore")
     return ""
 

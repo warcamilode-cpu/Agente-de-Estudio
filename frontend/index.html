@@ -96,6 +96,7 @@
           </div>
           <button type="submit" class="btn btn-primary">Enviar</button>
         </form>
+        <div id="chat-tok-session" class="tok-session"></div>
       </section>
 
       <!-- ── CUADERNO ── -->
@@ -182,9 +183,13 @@
           </div>
           <form id="maia-form" style="display:flex; gap:.5rem; padding:var(--gap); padding-top:.5rem; border-top:1px solid var(--border); flex-shrink:0;">
             <select id="maia-doc-sel" style="max-width:200px;"><option value="">— Todos los docs —</option></select>
-            <input id="maia-input" type="text" placeholder="Preguntale a Maia sobre los documentos…" style="flex:1;" autocomplete="off">
+            <div style="flex:1; position:relative; display:flex; align-items:center;">
+              <input id="maia-input" type="text" placeholder="Preguntale a Maia sobre los documentos…" style="width:100%; padding-right:3.5rem;" autocomplete="off">
+              <span id="maia-tok-count" class="tok-badge"></span>
+            </div>
             <button type="submit" class="btn btn-primary">Preguntar</button>
           </form>
+          <div id="maia-tok-session" class="tok-session"></div>
         </div>
 
       </section>
@@ -192,20 +197,20 @@
       <!-- ── PROGRAMADOR (Atlas + Electra) ── -->
       <section id="tab-plan" class="section">
 
-        <!-- Encabezado -->
-        <div id="plan-header-row" class="row" style="margin-bottom:.9rem; flex-shrink:0; padding: var(--gap) var(--gap) 0;">
+        <!-- Encabezado siempre visible -->
+        <div id="plan-header-row" class="row" style="flex-shrink:0; padding: var(--gap) var(--gap) 0;">
           <div style="flex:1;">
             <h2 style="margin-bottom:.1rem;">Programador</h2>
             <p style="font-size:.75rem; color:var(--text-muted); margin:0;">
-              Agente Atlas &amp; Agente Electra — coordinados por Shaula
+              Atlas &amp; Electra — coordinados por Shaula
             </p>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="verHistorialPlanes()">📋 Historial</button>
         </div>
 
-        <!-- Formulario de nuevo plan -->
-        <div id="plan-form-area" class="card" style="margin: 0 var(--gap) .5rem;">
-          <div style="margin-bottom:.65rem;">
+        <!-- Formulario de nuevo plan (oculto cuando hay plan activo) -->
+        <div id="plan-form-area" class="card" style="margin: .5rem var(--gap);">
+          <div style="margin-bottom:.6rem;">
             <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Materia (opcional)</label>
             <select id="plan-materia-sel" style="width:100%; margin-top:.3rem;"><option value="">— Sin filtro —</option></select>
           </div>
@@ -226,8 +231,12 @@
           <div id="plan-sched-fields" style="display:none; margin-bottom:.75rem; border:1px solid var(--border); border-radius:var(--radius); padding:.65rem; background:var(--surface2);">
             <div style="display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.5rem;">
               <div>
-                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Días para completar</label>
-                <input type="number" id="plan-sched-dias" min="1" max="365" value="7" style="width:75px;">
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Fecha de inicio</label>
+                <input type="date" id="plan-sched-fecha">
+              </div>
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Días a completar</label>
+                <input type="number" id="plan-sched-dias" min="1" max="365" value="7" style="width:70px;">
               </div>
               <div>
                 <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Hora inicio</label>
@@ -255,47 +264,54 @@
           <button class="btn btn-primary" id="btn-generar-plan">Generar plan completo</button>
         </div>
 
-        <!-- Plan generado (todos los módulos juntos) + Q&A -->
-        <div id="plan-resultado" style="display:none;">
+        <!-- Resultado: 3 sub-pestañas (Plan / Agentes / Calendario) -->
+        <div id="plan-resultado">
 
-          <!-- Zona scrollable: contenido del plan -->
-          <div id="plan-content-scroll">
-            <p id="plan-fecha" style="color:var(--text-muted); font-size:.82rem;"></p>
-            <div id="plan-contenido" class="card" style="font-size:.9rem; line-height:1.8;"></div>
-            <div>
-              <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()">+ Nuevo plan</button>
-            </div>
+          <!-- Barra de sub-pestañas -->
+          <div class="plan-subtabs-bar">
+            <button class="plan-subtab-btn active" id="plan-stab-plan"       onclick="_planTab('plan')">📋 Plan</button>
+            <button class="plan-subtab-btn"         id="plan-stab-agentes"    onclick="_planTab('agentes')">💬 Agentes</button>
+            <button class="plan-subtab-btn"         id="plan-stab-calendario" onclick="_planTab('calendario')">📅 Calendario</button>
           </div>
 
-          <!-- Chat Q&A — siempre visible al fondo -->
-          <div class="card" id="plan-chat-area">
-            <!-- Encabezado con indicador de agente activo -->
-            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.65rem; flex-wrap:wrap;">
+          <!-- Tab: Plan generado -->
+          <div id="plan-tab-plan" style="flex:1; overflow-y:auto; min-height:0; padding:var(--gap);">
+            <p id="plan-fecha" style="color:var(--text-muted); font-size:.82rem; margin-bottom:.6rem;"></p>
+            <div id="plan-contenido" class="card" style="font-size:.9rem; line-height:1.8; margin-bottom:.75rem;"></div>
+            <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()">+ Nuevo plan</button>
+          </div>
+
+          <!-- Tab: Agentes (Atlas / Electra) -->
+          <div id="plan-tab-agentes" style="display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0;">
+            <div style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; flex-shrink:0; padding:.6rem var(--gap) .4rem;">
               <span id="plan-agente-badge" class="plan-agente-badge plan-agente-plan">🗺️ Agente Atlas</span>
               <span id="plan-agente-desc" style="flex:1; font-size:.75rem; color:var(--text-muted);">
                 Planificador — responde dudas sobre el plan
               </span>
               <button id="btn-toggle-evaluador" class="btn btn-secondary btn-sm"
-                      onclick="toggleEvaluador()" title="Cambiar agente activo">
-                ⚡ Activar Electra
-              </button>
+                      onclick="toggleEvaluador()">⚡ Activar Electra</button>
             </div>
-            <div id="plan-chat-messages"></div>
-            <form id="plan-chat-form" style="display:flex; gap:.5rem; margin-top:.5rem;">
+            <div id="plan-chat-messages" style="flex:1; overflow-y:auto; min-height:0; padding:0 var(--gap); display:flex; flex-direction:column; gap:.5rem;"></div>
+            <form id="plan-chat-form" style="display:flex; gap:.5rem; padding:.5rem var(--gap) var(--gap); flex-shrink:0; border-top:1px solid var(--border);">
               <div style="flex:1; position:relative; display:flex; align-items:center;">
                 <input id="plan-chat-input" type="text"
-                       placeholder="¿Tenés dudas sobre algún paso del plan?" style="width:100%; padding-right:3.5rem;" autocomplete="off">
-                <span id="plan-tok-count"
-                      style="position:absolute; right:.6rem; font-size:.7rem; color:var(--text-dim);
-                             pointer-events:none; font-variant-numeric:tabular-nums; white-space:nowrap;"></span>
+                       placeholder="Escribí tu respuesta o duda…" style="width:100%; padding-right:3.5rem;" autocomplete="off">
+                <span id="plan-tok-count" class="tok-badge"></span>
               </div>
               <button type="submit" class="btn btn-primary btn-sm">Enviar</button>
             </form>
+            <div id="plan-tok-session" class="tok-session"></div>
           </div>
+
+          <!-- Tab: Calendario de sesiones -->
+          <div id="plan-tab-calendario" style="display:none; flex:1; overflow-y:auto; min-height:0; padding:var(--gap);">
+            <!-- Renderizado dinámicamente por _renderCalendario() -->
+          </div>
+
         </div>
 
-        <!-- Historial de planes -->
-        <div id="plan-historial-area" style="display:none;">
+        <!-- Historial de planes guardados -->
+        <div id="plan-historial-area" style="display:none; padding:0 var(--gap);">
           <div class="row" style="margin-bottom:.6rem;">
             <h3 style="flex:1; font-size:.9rem;">Planes guardados</h3>
             <button class="btn btn-secondary btn-sm" onclick="ocultarHistorial()">✕ Cerrar</button>

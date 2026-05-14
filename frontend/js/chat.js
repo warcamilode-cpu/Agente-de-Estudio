@@ -17,6 +17,8 @@ async function nuevaSesionChat() {
   _sessionId        = data.session_id;
   _primerMensaje    = true;
   _tokensAcumulados = 0;
+  const sesEl = document.getElementById("chat-tok-session");
+  if (sesEl) sesEl.textContent = "";
   mensajesEl.innerHTML = `
     <div class="msg-row assistant">
       <div class="msg-avatar">🌟</div>
@@ -174,8 +176,13 @@ function _registrarTokens(textoUsuario, textoAsistente) {
   const tokAsis = Math.round(textoAsistente.length / 4);
   _tokensAcumulados += tokUser + tokAsis;
   const counter = document.getElementById("chat-token-count");
-  if (counter && _tokensAcumulados > 0) {
+  if (counter) {
+    counter.textContent = "";
     counter.title = `Sesión: ~${_tokensAcumulados} tokens acumulados`;
+  }
+  const sesEl = document.getElementById("chat-tok-session");
+  if (sesEl && _tokensAcumulados > 0) {
+    sesEl.textContent = `Sesión: ~${_tokensAcumulados} tokens`;
   }
 }
 

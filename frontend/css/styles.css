@@ -1278,40 +1278,81 @@ label {
 #plan-header-row { flex-shrink: 0; padding-bottom: .5rem; }
 #plan-form-area  { flex-shrink: 0; }
 
-/* Contenedor resultado: ocupa el espacio restante */
+/* Contenedor resultado: oculto hasta que haya plan activo */
 #plan-resultado {
   flex: 1;
   min-height: 0;
-  display: flex;
+  display: none;
   flex-direction: column;
   overflow: hidden;
   gap: 0;
 }
 
-/* Zona scrollable del contenido del plan */
-#plan-content-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+/* ── Plan — sub-pestañas ── */
+.plan-subtabs-bar {
   display: flex;
-  flex-direction: column;
-  gap: .65rem;
-  padding: var(--gap) var(--gap) .5rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.plan-subtab-btn {
+  flex: 1;
+  padding: .5rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.plan-subtab-btn.active { color: var(--accent-h); border-bottom-color: var(--accent); }
+
+/* ── Token badge (live) y session counter ── */
+.tok-badge {
+  position: absolute;
+  right: .6rem;
+  font-size: .7rem;
+  color: var(--accent-h);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: .8;
+}
+.tok-session {
+  font-size: .7rem;
+  color: var(--text-muted);
+  text-align: right;
+  padding: .15rem var(--gap) .2rem;
+  flex-shrink: 0;
 }
 
-/* Chat Q&A: siempre visible en la parte inferior */
-#plan-chat-area {
-  flex-shrink: 0;
-  border-top: 1px solid var(--border);
-  border-radius: 0 !important;
-  padding: .75rem var(--gap) var(--gap);
-  background: var(--card-bg);
+/* ── Calendario de sesiones ── */
+.cal-sesion {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .3rem .55rem;
+  border-radius: 6px;
+  font-size: .82rem;
+  background: var(--surface2);
 }
+.cal-sesion.cal-hoy {
+  background: var(--accent-soft);
+  border: 1px solid rgba(13,148,136,.4);
+}
+.cal-num { font-size: .7rem; font-weight: 700; color: var(--text-muted); min-width: 1.4rem; text-align: center; }
+.cal-fecha { flex: 1; font-weight: 600; }
+.cal-hora { font-size: .75rem; color: var(--text-dim); }
+
+/* Chat Q&A: ocupa toda la altura de la sub-pestaña Agentes */
 #plan-chat-messages {
   display: flex;
   flex-direction: column;
   gap: .5rem;
-  max-height: 220px;
   overflow-y: auto;
 }
 

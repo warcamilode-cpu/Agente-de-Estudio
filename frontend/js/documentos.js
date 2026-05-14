@@ -3,6 +3,7 @@
 let _docActivoId   = null;
 let _docsTabActual = "repo";
 let _maiaHistorial = [];
+let _maiaToksAcum  = 0;
 
 async function cargarDocumentos() {
   const materiaId = document.getElementById("docs-filtro-materia")?.value || "";
@@ -234,6 +235,13 @@ async function _enviarMaia(e) {
     { role: "user",      content: texto },
     { role: "assistant", content: acumulado },
   );
+
+  // Contador de tokens persistente
+  _maiaToksAcum += Math.round((texto.length + acumulado.length) / 4);
+  const tokEl = document.getElementById("maia-tok-count");
+  if (tokEl) tokEl.textContent = "";
+  const sesEl = document.getElementById("maia-tok-session");
+  if (sesEl && _maiaToksAcum > 0) sesEl.textContent = `Sesión: ~${_maiaToksAcum} tokens`;
 }
 
 function _maiaMsg(msgArea, rol, contenido) {
@@ -261,4 +269,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("docs-filtro-materia")?.addEventListener("change", cargarDocumentos);
   document.getElementById("btn-subir-archivo")?.addEventListener("click", abrirModalSubirDoc);
   document.getElementById("maia-form")?.addEventListener("submit", _enviarMaia);
+
+  // Contador de tokens en vivo para Maia
+  const maiaInput    = document.getElementById("maia-input");
+  const maiaTokCount = document.getElementById("maia-tok-count");
+  if (maiaInput && maiaTokCount) {
+    maiaInput.addEventListener("input", () => {
+      const est = Math.round(maiaInput.value.length / 4);
+      maiaTokCount.textContent = est > 0 ? `~${est} tok` : "";
+    });
+  }
 });

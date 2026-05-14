@@ -75,12 +75,91 @@ function _mostrarPlan(data) {
   document.getElementById("plan-chat-messages").innerHTML = "";
   _planHistorial = [];
   _modoEval      = false;
+  _planToksAcum  = 0;
+  const sesEl = document.getElementById("plan-tok-session");
+  if (sesEl) sesEl.textContent = "";
   _actualizarIndicadorAgente();
 
   // Ocultar formulario de generación — el plan ocupa el espacio
   document.getElementById("plan-form-area").style.display = "none";
 
   resultado.style.display = "flex";
+  _planTab("plan");
+}
+
+// ── Sub-pestañas del resultado ───────────────────────────────────
+
+function _planTab(tab) {
+  ["plan", "agentes", "calendario"].forEach(t => {
+    const el  = document.getElementById(`plan-tab-${t}`);
+    const btn = document.getElementById(`plan-stab-${t}`);
+    if (!el || !btn) return;
+    const active = t === tab;
+    el.style.display = active ? (t === "agentes" ? "flex" : "block") : "none";
+    btn.classList.toggle("active", active);
+  });
+  if (tab === "calendario") _renderCalendario();
+}
+
+// ── Calendario de sesiones ───────────────────────────────────────
+
+function _calcularFechas(fechaInicio, totalDias, diasSem) {
+  const fechas = [];
+  if (!diasSem.length || !totalDias) return fechas;
+  const inicio  = fechaInicio ? new Date(fechaInicio + "T00:00:00") : new Date();
+  const cursor  = new Date(inicio);
+  let count = 0, intentos = 0;
+  while (count < totalDias && intentos < 365) {
+    if (diasSem.includes(cursor.getDay())) {
+      fechas.push(new Date(cursor));
+      count++;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+    intentos++;
+  }
+  return fechas;
+}
+
+function _renderCalendario() {
+  const container = document.getElementById("plan-tab-calendario");
+  if (!container) return;
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  if (!cronos.length) {
+    container.innerHTML = '<p style="color:var(--text-muted); font-size:.875rem; text-align:center; padding-top:2rem;">Sin cronogramas guardados aún.<br>Generá un plan con el cronograma habilitado.</p>';
+    return;
+  }
+  const hoyStr = new Date().toDateString();
+  container.innerHTML = cronos.map(c => {
+    const fechas = _calcularFechas(c.fechaInicio || "", c.dias || 7, c.diasSem || []);
+    const sesionesHTML = fechas.map((f, i) => {
+      const esHoy  = f.toDateString() === hoyStr;
+      const label  = f.toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short" });
+      return `<div class="cal-sesion${esHoy ? " cal-hoy" : ""}">
+        <span class="cal-num">${i + 1}</span>
+        <span class="cal-fecha">${label}</span>
+        <span class="cal-hora">${c.horaIni}–${c.horaFin}</span>
+      </div>`;
+    }).join("");
+    const fechaInicioLabel = c.fechaInicio
+      ? new Date(c.fechaInicio + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
+      : "Fecha no definida";
+    return `<div class="card" style="margin-bottom:.75rem;">
+      <div style="display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.55rem;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:700; font-size:.9rem; margin-bottom:.15rem;">${c.tema}</div>
+          <div style="font-size:.75rem; color:var(--text-muted);">Desde ${fechaInicioLabel} · ${c.dias} sesiones · ${c.horaIni}–${c.horaFin}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="_eliminarCronograma(${c.id})">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:.2rem;">${sesionesHTML || '<p style="color:var(--text-muted); font-size:.8rem;">Sin fechas calculadas (revisá días seleccionados).</p>'}</div>
+    </div>`;
+  }).join("");
+}
+
+function _eliminarCronograma(id) {
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  localStorage.setItem("atalaya-cronogramas", JSON.stringify(cronos.filter(c => c.id !== id)));
+  _renderCalendario();
 }
 
 // ── Nuevo plan ───────────────────────────────────────────────────
@@ -94,6 +173,8 @@ function nuevoPlan() {
   document.getElementById("plan-resultado").style.display = "none";
   document.getElementById("plan-form-area").style.display = "";
   document.getElementById("plan-tema-input").value = "";
+  const sesEl = document.getElementById("plan-tok-session");
+  if (sesEl) sesEl.textContent = "";
   // Resetear cronograma
   const toggle = document.getElementById("plan-sched-toggle");
   if (toggle) { toggle.checked = false; toggleCronograma(); }
@@ -260,7 +341,9 @@ async function _enviarPregunta(e) {
   // Contador de tokens
   _planToksAcum += Math.round((texto.length + acumulado.length) / 4);
   const tokEl = document.getElementById("plan-tok-count");
-  if (tokEl) { tokEl.textContent = ""; tokEl.title = `~${_planToksAcum} tokens en esta sesión`; }
+  if (tokEl) tokEl.textContent = "";
+  const sesEl = document.getElementById("plan-tok-session");
+  if (sesEl && _planToksAcum > 0) sesEl.textContent = `Sesión: ~${_planToksAcum} tokens`;
 }
 
 // ── Helper burbuja con avatar para el chat del plan ───────────────
@@ -357,20 +440,21 @@ async function _solicitarPermisoNotif() {
 }
 
 function _guardarCronograma(tema) {
-  const dias     = parseInt(document.getElementById("plan-sched-dias")?.value) || 7;
-  const horaIni  = document.getElementById("plan-sched-hora-ini")?.value || "08:00";
-  const horaFin  = document.getElementById("plan-sched-hora-fin")?.value || "09:00";
-  const diasSem  = [...document.querySelectorAll("[name='plan-sched-dia']:checked")]
-                     .map(el => parseInt(el.value));
+  const dias        = parseInt(document.getElementById("plan-sched-dias")?.value) || 7;
+  const fechaInicio = document.getElementById("plan-sched-fecha")?.value || "";
+  const horaIni     = document.getElementById("plan-sched-hora-ini")?.value || "08:00";
+  const horaFin     = document.getElementById("plan-sched-hora-fin")?.value || "09:00";
+  const diasSem     = [...document.querySelectorAll("[name='plan-sched-dia']:checked")]
+                       .map(el => parseInt(el.value));
 
   if (!diasSem.length) { toast("Seleccioná al menos un día de la semana"); return; }
 
   const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
-  const nuevo  = { id: Date.now(), tema, dias, horaIni, horaFin, diasSem, creado: new Date().toISOString() };
+  const nuevo  = { id: Date.now(), tema, dias, fechaInicio, horaIni, horaFin, diasSem, creado: new Date().toISOString() };
   cronos.push(nuevo);
   localStorage.setItem("atalaya-cronogramas", JSON.stringify(cronos));
   _programarNotifHoy(nuevo);
-  toast(`Cronograma guardado. Notificación a las ${horaIni}`, 3000);
+  toast(`Cronograma guardado: ${dias} sesiones a las ${horaIni}`, 3000);
 }
 
 function _programarNotifHoy(c) {
