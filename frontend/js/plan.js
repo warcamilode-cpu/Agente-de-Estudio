@@ -62,10 +62,11 @@ function _mostrarPlan(data) {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   }) + (data.materia_nombre && data.materia_nombre !== "—" ? ` · ${data.materia_nombre}` : "");
 
-  // Limpiar chat Q&A
+  // Limpiar chat Q&A y resetear agente
   document.getElementById("plan-chat-messages").innerHTML = "";
   _planHistorial = [];
   _modoEval      = false;
+  _actualizarIndicadorAgente();
 
   resultado.style.display = "block";
   resultado.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -82,26 +83,61 @@ function nuevoPlan() {
   document.getElementById("plan-tema-input").focus();
 }
 
-// ── Evaluador ────────────────────────────────────────────────────
+// ── Indicador de agente activo ───────────────────────────────────
 
-function activarEvaluador() {
+function _actualizarIndicadorAgente() {
+  const badge = document.getElementById("plan-agente-badge");
+  const desc  = document.getElementById("plan-agente-desc");
+  const btn   = document.getElementById("btn-toggle-evaluador");
+  const input = document.getElementById("plan-chat-input");
+  if (!badge) return;
+
+  if (_modoEval) {
+    badge.textContent = "🎯 Evaluador";
+    badge.className   = "plan-agente-badge plan-agente-eval";
+    desc.textContent  = "Evaluando tu comprensión del tema";
+    btn.textContent   = "💬 Volver al Planificador";
+    input.placeholder = "Respondé las preguntas del Evaluador…";
+  } else {
+    badge.textContent = "🗺️ Planificador";
+    badge.className   = "plan-agente-badge plan-agente-plan";
+    desc.textContent  = "Responde dudas sobre el plan";
+    btn.textContent   = "🎯 Activar Evaluador";
+    input.placeholder = "¿Tenés dudas sobre algún paso del plan?";
+  }
+}
+
+function toggleEvaluador() {
   if (!_planActivo) return;
-  _modoEval = true;
+  _modoEval = !_modoEval;
+  _actualizarIndicadorAgente();
 
   const msgArea = document.getElementById("plan-chat-messages");
-  const header  = document.getElementById("plan-chat-area").querySelector("h3");
-  header.textContent  = "🎯 Agente Evaluador";
-  header.style.color  = "var(--brand)";
-
-  // Mensaje de activación
-  const div = document.createElement("div");
-  div.className = "msg assistant";
-  div.style.cssText = "font-size:.875rem; line-height:1.7;";
-  div.innerHTML = "<em>Activando el agente Evaluador… Escribí <strong>empezar</strong> para iniciar la evaluación.</em>";
-  msgArea.appendChild(div);
+  const aviso   = document.createElement("div");
+  aviso.style.cssText = "font-size:.78rem; color:var(--text-muted); text-align:center; padding:.3rem 0;";
+  aviso.textContent   = _modoEval
+    ? "— Agente Evaluador activado —"
+    : "— Volviste al Planificador —";
+  msgArea.appendChild(aviso);
   msgArea.scrollTop = msgArea.scrollHeight;
 
+  if (_modoEval) {
+    // Dispara automáticamente la primera pregunta del Evaluador
+    _dispararMensajeEvaluador();
+  }
+
   document.getElementById("plan-chat-input").focus();
+}
+
+async function _dispararMensajeEvaluador() {
+  // Envía un mensaje silencioso para que el Evaluador se presente y empiece
+  const evento = new Event("submit");
+  const inputReal = document.getElementById("plan-chat-input");
+  const valAnterior = inputReal.value;
+  inputReal.value = "Comenzá la evaluación.";
+  document.getElementById("plan-chat-form").dispatchEvent(evento);
+  // el form limpia el input; restauramos nada (era vacío antes)
+  void valAnterior;
 }
 
 // ── Chat Q&A ─────────────────────────────────────────────────────
@@ -239,14 +275,7 @@ async function restaurarPlan(planId) {
     _planActivo    = data;
     _planHistorial = [];
     _modoEval      = false;
-
-    // Resetear header del chat
-    const header = document.getElementById("plan-chat-area")?.querySelector("h3");
-    if (header) {
-      header.textContent = "Preguntale al Planificador sobre este tema";
-      header.style.color = "var(--accent)";
-    }
-
+    _actualizarIndicadorAgente();
     _mostrarPlan(data);
   } catch (e) {
     toast(`Error al cargar el plan: ${e.message}`, 4000);

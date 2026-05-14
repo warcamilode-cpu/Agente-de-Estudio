@@ -194,25 +194,30 @@
           <div id="plan-contenido" class="card"
                style="font-size:.9rem; line-height:1.8; margin-bottom:1rem;"></div>
 
-          <!-- Botón evaluación -->
-          <div style="margin-bottom:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
-            <button class="btn btn-secondary btn-sm" onclick="activarEvaluador()">🎯 Evaluar mi comprensión</button>
+          <div style="margin-bottom:.75rem;">
             <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()">+ Nuevo plan</button>
           </div>
 
-          <!-- Chat Q&A con el Planificador -->
+          <!-- Chat Q&A con el Planificador / Evaluador -->
           <div class="card" id="plan-chat-area">
-            <h3 style="font-size:.78rem; font-weight:700; text-transform:uppercase;
-                       letter-spacing:.07em; color:var(--accent); margin-bottom:.65rem;">
-              Preguntale al Planificador sobre este tema
-            </h3>
+            <!-- Encabezado con indicador de agente activo -->
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.65rem; flex-wrap:wrap;">
+              <span id="plan-agente-badge" class="plan-agente-badge plan-agente-plan">🗺️ Planificador</span>
+              <span id="plan-agente-desc" style="flex:1; font-size:.75rem; color:var(--text-muted);">
+                Responde dudas sobre el plan
+              </span>
+              <button id="btn-toggle-evaluador" class="btn btn-secondary btn-sm"
+                      onclick="toggleEvaluador()" title="Cambiar agente activo">
+                🎯 Activar Evaluador
+              </button>
+            </div>
             <div id="plan-chat-messages"
                  style="display:flex; flex-direction:column; gap:.5rem;
                         max-height:340px; overflow-y:auto; margin-bottom:.65rem;"></div>
             <form id="plan-chat-form" style="display:flex; gap:.5rem;">
               <input id="plan-chat-input" type="text"
                      placeholder="¿Tenés dudas sobre algún paso del plan?" style="flex:1;">
-              <button type="submit" class="btn btn-primary btn-sm">Preguntar</button>
+              <button type="submit" class="btn btn-primary btn-sm">Enviar</button>
             </form>
           </div>
         </div>
