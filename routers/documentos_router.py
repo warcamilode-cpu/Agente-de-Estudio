@@ -1,9 +1,12 @@
+import json
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
 from database.connection import db
 from services.extractor import extraer_texto, chunkear_texto
+from services import llm_client
 
 router = APIRouter(prefix="/documentos", tags=["documentos"])
 
@@ -119,3 +122,79 @@ def eliminar_documento(doc_id: int):
         if ruta.exists():
             ruta.unlink()
         conn.execute("DELETE FROM documentos WHERE id = ?", (doc_id,))
+
+
+# ---------------------------------------------------------------------------
+# Modelo y endpoint de análisis con Maia (streaming SSE)
+# ---------------------------------------------------------------------------
+
+class MaiaIn(BaseModel):
+    doc_id: int | None = None
+    materia_id: int | None = None
+    mensaje: str
+    historial: list[dict] = []
+
+
+_PROMPT_MAIA = """\
+Eres Maia, agente de análisis del sistema Atalaya Pléyades coordinado por Shaula.
+Tu especialidad es analizar, sintetizar y responder preguntas sobre documentos de estudio.
+
+Documentos disponibles para análisis:
+{contexto}
+
+Respondé en español colombiano, de forma clara y académica.
+Si el contexto no contiene información suficiente para responder, indicalo claramente.\
+"""
+
+
+@router.post("/analisis/stream")
+def analisis_stream(payload: MaiaIn):
+    """Streaming SSE con Maia analizando chunks de documentos."""
+
+    # --- Recuperar contexto desde documento_chunks ---
+    contexto = ""
+    with db() as conn:
+        if payload.doc_id is not None:
+            rows = conn.execute(
+                "SELECT texto FROM documento_chunks WHERE doc_id = ? ORDER BY chunk_idx LIMIT 15",
+                (payload.doc_id,),
+            ).fetchall()
+            contexto = "\n\n".join(r["texto"] for r in rows)
+
+        elif payload.materia_id is not None:
+            rows = conn.execute(
+                """
+                SELECT dc.texto
+                FROM documento_chunks dc
+                JOIN documentos d ON d.id = dc.doc_id
+                WHERE d.materia_id = ?
+                ORDER BY dc.doc_id, dc.chunk_idx
+                LIMIT 25
+                """,
+                (payload.materia_id,),
+            ).fetchall()
+            contexto = "\n\n".join(r["texto"] for r in rows)
+
+        # Fallback: contenido_texto del propio documento
+        if not contexto and payload.doc_id is not None:
+            row = conn.execute(
+                "SELECT contenido_texto FROM documentos WHERE id = ?",
+                (payload.doc_id,),
+            ).fetchone()
+            if row and row["contenido_texto"]:
+                contexto = row["contenido_texto"][:4000]
+
+    if not contexto:
+        contexto = "No se encontró contenido de documentos para analizar."
+
+    system = _PROMPT_MAIA.format(contexto=contexto)
+
+    # Construir historial con el mensaje actual al final
+    mensajes = list(payload.historial) + [{"role": "user", "content": payload.mensaje}]
+
+    def _generar():
+        for chunk in llm_client.preguntar_stream(system, mensajes):
+            yield f"data: {json.dumps(chunk)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(_generar(), media_type="text/event-stream")

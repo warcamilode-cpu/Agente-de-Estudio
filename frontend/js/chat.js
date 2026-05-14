@@ -18,9 +18,12 @@ async function nuevaSesionChat() {
   _primerMensaje    = true;
   _tokensAcumulados = 0;
   mensajesEl.innerHTML = `
-    <div class="msg assistant shaula-intro">
-      Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
-      Seleccioná un tema y preguntame lo que necesites.
+    <div class="msg-row assistant">
+      <div class="msg-avatar">🌟</div>
+      <div class="msg assistant shaula-intro">
+        Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
+        Seleccioná un tema y preguntame lo que necesites.
+      </div>
     </div>`;
   document.getElementById("chat-sesion-titulo").textContent = "Nueva sesión";
 }
@@ -178,7 +181,16 @@ function _registrarTokens(textoUsuario, textoAsistente) {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
+const _AVATARES_CHAT = { user: "👤", assistant: "🌟" };
+
 function _agregarMensaje(rol, contenido) {
+  const row = document.createElement("div");
+  row.className = `msg-row ${rol}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  avatar.textContent = _AVATARES_CHAT[rol] || "👤";
+
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
   if (contenido) {
@@ -186,7 +198,10 @@ function _agregarMensaje(rol, contenido) {
       ? marked.parse(contenido)
       : _escaparHTML(contenido);
   }
-  mensajesEl.appendChild(div);
+
+  row.appendChild(avatar);
+  row.appendChild(div);
+  mensajesEl.appendChild(row);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
   return div;
 }

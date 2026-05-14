@@ -187,6 +187,47 @@ async function _guardarInfoMateria(matId) {
   _matActiva = { ..._matActiva, ...updated };
 }
 
+// ── Rich Text Editor ──────────────────────────────────────────────
+
+function _rteBarra(fieldId) {
+  return `<div class="rte-toolbar">
+    <button class="rte-btn" title="Negrita"   onmousedown="event.preventDefault();document.execCommand('bold')"><b>B</b></button>
+    <button class="rte-btn" title="Cursiva"   onmousedown="event.preventDefault();document.execCommand('italic')"><i>I</i></button>
+    <button class="rte-btn" title="Subrayado" onmousedown="event.preventDefault();document.execCommand('underline')"><u>U</u></button>
+    <span class="rte-sep-v"></span>
+    <button class="rte-btn" title="Viñetas"   onmousedown="event.preventDefault();document.execCommand('insertUnorderedList')">☰</button>
+    <button class="rte-btn" title="Cita"      onmousedown="event.preventDefault();_rteEnvolver('${fieldId}','blockquote')">❝</button>
+    <button class="rte-btn" title="Código"    onmousedown="event.preventDefault();_rteEnvolver('${fieldId}','code')">{ }</button>
+    <span class="rte-sep-v"></span>
+    <button class="rte-btn" title="Separador" onmousedown="event.preventDefault();document.execCommand('insertHTML',false,'<hr/>')">—</button>
+    <button class="rte-btn" title="Tabla"     onmousedown="event.preventDefault();_rteTabla()">⊞</button>
+  </div>`;
+}
+
+function _rteEnvolver(fieldId, tag) {
+  const el = document.getElementById(fieldId);
+  if (el) el.focus();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const node  = document.createElement(tag);
+  if (range.collapsed) {
+    node.textContent = tag === "blockquote" ? "Cita…" : "código";
+    range.insertNode(node);
+    const r2 = document.createRange();
+    r2.selectNodeContents(node);
+    sel.removeAllRanges();
+    sel.addRange(r2);
+  } else {
+    try { range.surroundContents(node); } catch (_) { /* selección multi-nodo */ }
+  }
+}
+
+function _rteTabla() {
+  document.execCommand("insertHTML", false,
+    `<table><thead><tr><th>Encabezado 1</th><th>Encabezado 2</th></tr></thead><tbody><tr><td>Celda 1</td><td>Celda 2</td></tr></tbody></table><p><br></p>`);
+}
+
 // ── Vista de clase — Cornell ──────────────────────────────────────
 
 async function _abrirClase(claseId, titulo, fecha, materiaId) {
@@ -210,31 +251,40 @@ function _renderCornell(apuntes) {
       <div class="cornell-main">
         <div class="cornell-indicios">
           <div class="cornell-col-label">Indicios / Pistas</div>
-          <textarea id="cn-indicios" placeholder="Palabras clave, preguntas de repaso…">${_esc(apuntes.indicios||'')}</textarea>
+          <div class="rte-field">
+            ${_rteBarra("cn-indicios")}
+            <div id="cn-indicios" class="rte-editor" contenteditable="true" data-placeholder="Palabras clave, preguntas de repaso…"></div>
+          </div>
         </div>
         <div class="cornell-notas-col">
           <div class="cornell-col-label">Notas principales</div>
-          <textarea id="cn-notas" placeholder="Apuntes detallados de la clase…">${_esc(apuntes.notas_principales||'')}</textarea>
+          <div class="rte-field">
+            ${_rteBarra("cn-notas")}
+            <div id="cn-notas" class="rte-editor" contenteditable="true" data-placeholder="Apuntes detallados de la clase…"></div>
+          </div>
         </div>
       </div>
       <div class="cornell-resumen">
         <div class="cornell-col-label" style="color:rgba(13,148,136,.7)">Resumen (2-3 ideas clave)</div>
-        <textarea id="cn-resumen" placeholder="Resumí la clase en 2 o 3 oraciones clave…">${_esc(apuntes.resumen||'')}</textarea>
+        <div class="rte-field">
+          ${_rteBarra("cn-resumen")}
+          <div id="cn-resumen" class="rte-editor" contenteditable="true" data-placeholder="Resumí la clase en 2 o 3 oraciones clave…"></div>
+        </div>
       </div>
-      <div class="cornell-tabs-bar">
-        <button class="cornell-tab-btn ${_tabActiva==='acciones'?'active':''}" onclick="_cambiarTab('acciones')">⚡ Acciones</button>
-        <button class="cornell-tab-btn ${_tabActiva==='referencias'?'active':''}" onclick="_cambiarTab('referencias')">📖 Referencia rápida</button>
+      <div class="cornell-acciones-bar">
+        <button class="btn btn-secondary btn-sm" onclick="_abrirModalAcciones()">⚡ Acciones</button>
+        <button class="btn btn-secondary btn-sm" onclick="_abrirModalReferencias()">📖 Referencia rápida</button>
       </div>
-      <div id="cn-tab-acciones"   class="cornell-tab-panel ${_tabActiva==='acciones'?'active':''}"></div>
-      <div id="cn-tab-referencias" class="cornell-tab-panel ${_tabActiva==='referencias'?'active':''}"></div>
     </div>`;
+
+  // Cargar HTML guardado en los editores
+  document.getElementById("cn-indicios").innerHTML = apuntes.indicios || "";
+  document.getElementById("cn-notas").innerHTML    = apuntes.notas_principales || "";
+  document.getElementById("cn-resumen").innerHTML  = apuntes.resumen || "";
 
   ["cn-indicios", "cn-notas", "cn-resumen"].forEach(id => {
     document.getElementById(id).addEventListener("input", _debounceGuardarApuntes);
   });
-
-  _cargarAcciones();
-  _cargarReferencias();
 }
 
 function _debounceGuardarApuntes() {
@@ -245,9 +295,9 @@ function _debounceGuardarApuntes() {
 async function _guardarApuntes() {
   if (!_claseActiva) return;
   const body = {
-    indicios:          document.getElementById("cn-indicios")?.value || "",
-    notas_principales: document.getElementById("cn-notas")?.value    || "",
-    resumen:           document.getElementById("cn-resumen")?.value  || "",
+    indicios:          document.getElementById("cn-indicios")?.innerHTML || "",
+    notas_principales: document.getElementById("cn-notas")?.innerHTML    || "",
+    resumen:           document.getElementById("cn-resumen")?.innerHTML  || "",
   };
   await api("PUT", `/cuaderno/clases/${_claseActiva.id}/apuntes`, body);
   const badge = document.getElementById("cn-guardado");
@@ -261,16 +311,16 @@ function _volverAMateria() {
   else _renderBienvenida();
 }
 
-// ── Tabs ─────────────────────────────────────────────────────────
+// ── Popups de Acciones y Referencia rápida ────────────────────────
 
-function _cambiarTab(nombre) {
-  _tabActiva = nombre;
-  document.querySelectorAll(".cornell-tab-btn").forEach((b, i) =>
-    b.classList.toggle("active", (i === 0 && nombre === "acciones") || (i === 1 && nombre === "referencias"))
-  );
-  document.querySelectorAll(".cornell-tab-panel").forEach(p =>
-    p.classList.toggle("active", p.id === `cn-tab-${nombre}`)
-  );
+function _abrirModalAcciones() {
+  document.getElementById("modal-acciones").classList.add("open");
+  _cargarAcciones();
+}
+
+function _abrirModalReferencias() {
+  document.getElementById("modal-referencias").classList.add("open");
+  _cargarReferencias();
 }
 
 // ── Acciones ──────────────────────────────────────────────────────
@@ -282,7 +332,7 @@ async function _cargarAcciones() {
 }
 
 function _renderAcciones(acciones) {
-  const panel = document.getElementById("cn-tab-acciones");
+  const panel = document.getElementById("cn-modal-acciones-cuerpo");
   if (!panel) return;
   const grupos = { "?": [], "*": [], "T": [] };
   acciones.forEach(a => grupos[a.tipo]?.push(a));
@@ -344,7 +394,7 @@ async function _cargarReferencias() {
 }
 
 function _renderReferencias(refs) {
-  const panel = document.getElementById("cn-tab-referencias");
+  const panel = document.getElementById("cn-modal-refs-cuerpo");
   if (!panel) return;
   let html = `<div style="display:flex; gap:.4rem; margin-bottom:.4rem; flex-wrap:wrap;">
     <input id="cn-ref-termino" type="text" placeholder="Término" style="flex:1; min-width:90px;">

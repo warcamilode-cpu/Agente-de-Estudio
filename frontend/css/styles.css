@@ -390,6 +390,30 @@ label {
   padding-bottom: .5rem;
 }
 
+/* ── Avatares — wrapper de fila para mensajes ── */
+.msg-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .45rem;
+}
+.msg-row.assistant { align-self: flex-start; }
+.msg-row.user      { align-self: flex-end; flex-direction: row-reverse; }
+
+.msg-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  line-height: 1;
+  margin-top: .2rem;
+}
+
 .msg {
   max-width: 88%;
   padding: .7rem .95rem;
@@ -1322,3 +1346,169 @@ label {
   color: var(--brand-h);
   border: 1px solid rgba(245,158,11,.3);
 }
+
+/* ── Dashboard — tarjetas ancho completo ── */
+.stats-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+/* ── Editor de texto enriquecido (Cornell) ── */
+.rte-field  { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.rte-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+  padding: .2rem .4rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.rte-btn {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: .8rem;
+  padding: .18rem .42rem;
+  transition: background .12s, color .12s;
+  line-height: 1;
+}
+.rte-btn:hover { background: var(--border); color: var(--text); }
+.rte-sep-v { width: 1px; height: 14px; background: var(--border); margin: 0 .18rem; flex-shrink: 0; }
+
+.rte-editor {
+  flex: 1;
+  min-height: 80px;
+  padding: .55rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: .855rem;
+  line-height: 1.65;
+  outline: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rte-editor:focus { border-color: var(--accent); }
+.rte-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.rte-editor ul  { padding-left: 1.2em; margin: .3em 0; }
+.rte-editor ol  { padding-left: 1.2em; margin: .3em 0; }
+.rte-editor li  { margin-bottom: .2em; }
+.rte-editor blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: .6rem;
+  margin: .4em 0;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.rte-editor code {
+  background: var(--surface2);
+  padding: .1em .35em;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: .83em;
+  color: var(--accent-h);
+}
+.rte-editor table { border-collapse: collapse; width: 100%; margin: .5em 0; font-size: .84rem; }
+.rte-editor th, .rte-editor td {
+  border: 1px solid var(--border);
+  padding: .3rem .55rem;
+  text-align: left;
+}
+.rte-editor th { background: var(--surface2); font-weight: 700; }
+.rte-editor hr  { border: none; border-top: 1px solid var(--border); margin: .5em 0; }
+
+/* ── Cornell — barra de acciones/referencias ── */
+.cornell-acciones-bar {
+  display: flex;
+  gap: .5rem;
+  padding: .55rem 1.2rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+/* ── Modal con botón cierre rojo ── */
+.btn-cerrar-modal-rojo {
+  background: none;
+  border: none;
+  color: var(--danger, #ef4444);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: .1rem .4rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background .12s;
+}
+.btn-cerrar-modal-rojo:hover { background: rgba(239,68,68,.12); }
+
+.modal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.modal-top h2 { margin: 0; }
+
+/* ── Documentos — sub-pestañas ── */
+.docs-subtabs-bar {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.docs-subtab-btn {
+  flex: 1;
+  padding: .5rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.docs-subtab-btn.active { color: var(--accent-h); border-bottom-color: var(--accent); }
+
+/* Maia intro */
+.msg.maia-intro {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid #8b5cf6;
+  color: var(--text);
+}
+.msg.maia-intro strong { color: #8b5cf6; }
+#maia-messages { flex: 1; overflow-y: auto; padding: var(--gap); display: flex; flex-direction: column; gap: .65rem; }
+
+/* ── Programador — cronograma/notificaciones ── */
+.dias-semana-sel {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .3rem;
+}
+.dias-semana-sel label {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .82rem;
+  cursor: pointer;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: .2rem .6rem;
+  transition: background .12s, border-color .12s;
+}
+.dias-semana-sel label:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-h);
+}
+.dias-semana-sel input { display: none; }

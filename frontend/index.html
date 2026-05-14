@@ -81,7 +81,10 @@
           </div>
         </div>
         <div id="chat-messages">
-          <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
+          <div class="msg-row assistant">
+            <div class="msg-avatar">🌟</div>
+            <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
+          </div>
         </div>
         <form id="chat-form">
           <select id="chat-materia" style="max-width:160px"></select>
@@ -143,8 +146,16 @@
       </section>
 
       <!-- ── DOCUMENTOS ── -->
-      <section id="tab-documentos" class="section" style="padding:0; overflow:hidden;">
-        <div class="docs-shell">
+      <section id="tab-documentos" class="section" style="padding:0; overflow:hidden; flex-direction:column;">
+
+        <!-- Sub-pestañas -->
+        <div class="docs-subtabs-bar">
+          <button class="docs-subtab-btn active" id="docs-stab-repo" onclick="_docsTab('repo')">📁 Repositorio</button>
+          <button class="docs-subtab-btn" id="docs-stab-maia" onclick="_docsTab('maia')">🔬 Análisis · Maia</button>
+        </div>
+
+        <!-- Panel Repositorio -->
+        <div id="docs-tab-repo" class="docs-shell" style="flex:1; overflow:hidden;">
           <div class="docs-panel-lista">
             <div class="docs-panel-header">
               <select id="docs-filtro-materia" style="flex:1; min-width:0;"><option value="">Todas las materias</option></select>
@@ -160,6 +171,22 @@
             </div>
           </div>
         </div>
+
+        <!-- Panel Maia (análisis) -->
+        <div id="docs-tab-maia" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+          <div id="maia-messages">
+            <div class="msg assistant maia-intro">
+              Hola, soy <strong>Maia</strong>, agente de análisis de Atalaya Pléyades.<br>
+              Seleccioná un documento y preguntame sobre su contenido. Puedo resumir, comparar, extraer ideas clave y más.
+            </div>
+          </div>
+          <form id="maia-form" style="display:flex; gap:.5rem; padding:var(--gap); padding-top:.5rem; border-top:1px solid var(--border); flex-shrink:0;">
+            <select id="maia-doc-sel" style="max-width:200px;"><option value="">— Todos los docs —</option></select>
+            <input id="maia-input" type="text" placeholder="Preguntale a Maia sobre los documentos…" style="flex:1;" autocomplete="off">
+            <button type="submit" class="btn btn-primary">Preguntar</button>
+          </form>
+        </div>
+
       </section>
 
       <!-- ── PROGRAMADOR (Atlas + Electra) ── -->
@@ -182,12 +209,49 @@
             <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Materia (opcional)</label>
             <select id="plan-materia-sel" style="width:100%; margin-top:.3rem;"><option value="">— Sin filtro —</option></select>
           </div>
-          <div style="margin-bottom:.75rem;">
+          <div style="margin-bottom:.6rem;">
             <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">¿Qué tema querés estudiar?</label>
-            <textarea id="plan-tema-input" rows="3"
+            <textarea id="plan-tema-input" rows="2"
               placeholder="Ej: Acción de tutela — requisitos y procedencia&#10;Ej: Funciones en Python — closures y decoradores"
               style="width:100%; margin-top:.3rem; resize:vertical;"></textarea>
           </div>
+
+          <!-- Cronograma -->
+          <div style="margin-bottom:.6rem;">
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; font-size:.82rem; color:var(--text-dim);">
+              <input type="checkbox" id="plan-sched-toggle" onchange="toggleCronograma()">
+              Agregar al cronograma con notificaciones
+            </label>
+          </div>
+          <div id="plan-sched-fields" style="display:none; margin-bottom:.75rem; border:1px solid var(--border); border-radius:var(--radius); padding:.65rem; background:var(--surface2);">
+            <div style="display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.5rem;">
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Días para completar</label>
+                <input type="number" id="plan-sched-dias" min="1" max="365" value="7" style="width:75px;">
+              </div>
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Hora inicio</label>
+                <input type="time" id="plan-sched-hora-ini" value="08:00">
+              </div>
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Hora fin</label>
+                <input type="time" id="plan-sched-hora-fin" value="09:00">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.3rem;">Días de la semana</label>
+              <div class="dias-semana-sel">
+                <label><input type="checkbox" name="plan-sched-dia" value="1"> Lun</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="2"> Mar</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="3"> Mié</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="4"> Jue</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="5"> Vie</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="6"> Sáb</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="0"> Dom</label>
+              </div>
+            </div>
+          </div>
+
           <button class="btn btn-primary" id="btn-generar-plan">Generar plan completo</button>
         </div>
 
@@ -218,8 +282,13 @@
             </div>
             <div id="plan-chat-messages"></div>
             <form id="plan-chat-form" style="display:flex; gap:.5rem; margin-top:.5rem;">
-              <input id="plan-chat-input" type="text"
-                     placeholder="¿Tenés dudas sobre algún paso del plan?" style="flex:1;">
+              <div style="flex:1; position:relative; display:flex; align-items:center;">
+                <input id="plan-chat-input" type="text"
+                       placeholder="¿Tenés dudas sobre algún paso del plan?" style="width:100%; padding-right:3.5rem;" autocomplete="off">
+                <span id="plan-tok-count"
+                      style="position:absolute; right:.6rem; font-size:.7rem; color:var(--text-dim);
+                             pointer-events:none; font-variant-numeric:tabular-nums; white-space:nowrap;"></span>
+              </div>
               <button type="submit" class="btn btn-primary btn-sm">Enviar</button>
             </form>
           </div>
@@ -397,6 +466,28 @@
       <button class="btn btn-secondary" onclick="cerrarModalCuadernoClase()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarClase()">Crear y abrir apuntes</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal Acciones del cuaderno Cornell -->
+<div class="modal-overlay" id="modal-acciones">
+  <div class="modal" style="max-width:520px; width:95vw;">
+    <div class="modal-top">
+      <h2>⚡ Acciones</h2>
+      <button class="btn-cerrar-modal-rojo" onclick="document.getElementById('modal-acciones').classList.remove('open')" title="Cerrar">✕</button>
+    </div>
+    <div id="cn-modal-acciones-cuerpo" style="max-height:65dvh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- Modal Referencia rápida del cuaderno Cornell -->
+<div class="modal-overlay" id="modal-referencias">
+  <div class="modal" style="max-width:520px; width:95vw;">
+    <div class="modal-top">
+      <h2>📖 Referencia rápida</h2>
+      <button class="btn-cerrar-modal-rojo" onclick="document.getElementById('modal-referencias').classList.remove('open')" title="Cerrar">✕</button>
+    </div>
+    <div id="cn-modal-refs-cuerpo" style="max-height:65dvh; overflow-y:auto;"></div>
   </div>
 </div>
 

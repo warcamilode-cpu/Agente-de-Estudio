@@ -1,9 +1,11 @@
 // Módulo Planificador — plan por tema + Q&A + Evaluador
 
-let _planActivo   = null;   // { id, tema, plan_texto }
-let _planHistorial = [];    // conversación Q&A en memoria
-let _modoEval     = false;  // true = agente Evaluador activo
-let _planGenerando = false;
+let _planActivo      = null;   // { id, tema, plan_texto }
+let _planHistorial   = [];     // conversación Q&A en memoria
+let _modoEval        = false;  // true = agente Evaluador activo
+let _planGenerando   = false;
+let _examenIniciado  = false;  // Electra: no volver a disparar si ya inició
+let _planToksAcum    = 0;      // tokens acumulados en el chat del plan
 
 // ── Generar plan ─────────────────────────────────────────────────
 
@@ -36,11 +38,18 @@ async function generarPlan() {
       materia_id: materiaId ? +materiaId : null,
     });
 
-    _planActivo   = data;
-    _planHistorial = [];
-    _modoEval     = false;
+    _planActivo     = data;
+    _planHistorial  = [];
+    _modoEval       = false;
+    _examenIniciado = false;
+    _planToksAcum   = 0;
 
     _mostrarPlan(data);
+
+    // Si hay cronograma habilitado, guardarlo
+    if (document.getElementById("plan-sched-toggle")?.checked) {
+      _guardarCronograma(tema);
+    }
 
   } catch (e) {
     toast(`Error al generar el plan: ${e.message}`, 5000);
@@ -77,12 +86,17 @@ function _mostrarPlan(data) {
 // ── Nuevo plan ───────────────────────────────────────────────────
 
 function nuevoPlan() {
-  _planActivo    = null;
-  _planHistorial = [];
-  _modoEval      = false;
+  _planActivo     = null;
+  _planHistorial  = [];
+  _modoEval       = false;
+  _examenIniciado = false;
+  _planToksAcum   = 0;
   document.getElementById("plan-resultado").style.display = "none";
   document.getElementById("plan-form-area").style.display = "";
   document.getElementById("plan-tema-input").value = "";
+  // Resetear cronograma
+  const toggle = document.getElementById("plan-sched-toggle");
+  if (toggle) { toggle.checked = false; toggleCronograma(); }
   document.getElementById("plan-tema-input").focus();
 }
 
@@ -124,8 +138,9 @@ function toggleEvaluador() {
   msgArea.appendChild(aviso);
   msgArea.scrollTop = msgArea.scrollHeight;
 
-  if (_modoEval) {
-    // Dispara automáticamente la primera pregunta del Evaluador
+  // Solo dispara el examen la primera vez que se activa Electra
+  if (_modoEval && !_examenIniciado) {
+    _examenIniciado = true;
     _dispararMensajeEvaluador();
   }
 
@@ -151,6 +166,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const form = document.getElementById("plan-chat-form");
   if (form) form.addEventListener("submit", _enviarPregunta);
+
+  // Contador de tokens del chat del plan
+  const planInput    = document.getElementById("plan-chat-input");
+  const planTokCount = document.getElementById("plan-tok-count");
+  if (planInput && planTokCount) {
+    planInput.addEventListener("input", () => {
+      const est = Math.round(planInput.value.length / 4);
+      planTokCount.textContent = est > 0 ? `~${est} tok` : "";
+    });
+  }
+
+  // Iniciar notificaciones programadas (si hay permiso)
+  _iniciarNotificaciones();
 });
 
 async function _enviarPregunta(e) {
@@ -164,23 +192,15 @@ async function _enviarPregunta(e) {
 
   const msgArea = document.getElementById("plan-chat-messages");
 
-  // Burbuja usuario
-  const userDiv = document.createElement("div");
-  userDiv.className = "msg user";
-  userDiv.style.cssText = "font-size:.875rem;";
-  userDiv.textContent   = texto;
-  msgArea.appendChild(userDiv);
-  msgArea.scrollTop = msgArea.scrollHeight;
+  // Burbuja usuario con avatar
+  _planBurbuja(msgArea, "user", texto);
 
   // Burbuja asistente (vacía con cursor)
-  const asstDiv = document.createElement("div");
-  asstDiv.className = "msg assistant";
-  asstDiv.style.cssText = "font-size:.875rem; line-height:1.7;";
+  const asstDiv = _planBurbuja(msgArea, "assistant", "");
   const cursor = document.createElement("span");
   cursor.className  = "cursor-blink";
   cursor.textContent = "▍";
   asstDiv.appendChild(cursor);
-  msgArea.appendChild(asstDiv);
   msgArea.scrollTop = msgArea.scrollHeight;
 
   let acumulado = "";
@@ -231,11 +251,41 @@ async function _enviarPregunta(e) {
   asstDiv.innerHTML = marked.parse(acumulado);
   msgArea.scrollTop = msgArea.scrollHeight;
 
-  // Actualizar historial en memoria
+  // Historial en memoria
   _planHistorial.push(
     { role: "user",      content: texto },
     { role: "assistant", content: acumulado },
   );
+
+  // Contador de tokens
+  _planToksAcum += Math.round((texto.length + acumulado.length) / 4);
+  const tokEl = document.getElementById("plan-tok-count");
+  if (tokEl) { tokEl.textContent = ""; tokEl.title = `~${_planToksAcum} tokens en esta sesión`; }
+}
+
+// ── Helper burbuja con avatar para el chat del plan ───────────────
+
+function _planBurbuja(msgArea, rol, contenido) {
+  const row = document.createElement("div");
+  row.className = `msg-row ${rol}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  if (rol === "user") {
+    avatar.textContent = "👤";
+  } else {
+    avatar.textContent = _modoEval ? "⚡" : "🗺️";
+  }
+
+  const div = document.createElement("div");
+  div.className = `msg ${rol}`;
+  if (contenido) div.textContent = contenido;
+
+  row.appendChild(avatar);
+  row.appendChild(div);
+  msgArea.appendChild(row);
+  msgArea.scrollTop = msgArea.scrollHeight;
+  return div;
 }
 
 // ── Historial de planes guardados ────────────────────────────────
@@ -275,12 +325,72 @@ async function restaurarPlan(planId) {
   ocultarHistorial();
   try {
     const data = await api("GET", `/plan/planificador/planes/${planId}`);
-    _planActivo    = data;
-    _planHistorial = [];
-    _modoEval      = false;
+    _planActivo     = data;
+    _planHistorial  = [];
+    _modoEval       = false;
+    _examenIniciado = false;
+    _planToksAcum   = 0;
     _actualizarIndicadorAgente();
     _mostrarPlan(data);
   } catch (e) {
     toast(`Error al cargar el plan: ${e.message}`, 4000);
   }
+}
+
+// ── Cronograma y notificaciones web ──────────────────────────────
+
+function toggleCronograma() {
+  const checked = document.getElementById("plan-sched-toggle")?.checked;
+  const fields  = document.getElementById("plan-sched-fields");
+  if (fields) fields.style.display = checked ? "" : "none";
+  if (checked) _solicitarPermisoNotif();
+}
+
+async function _solicitarPermisoNotif() {
+  if (!("Notification" in window)) {
+    toast("Tu navegador no soporta notificaciones web"); return;
+  }
+  if (Notification.permission === "granted") return;
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted")
+    toast("Habilitá las notificaciones en la configuración del navegador", 4000);
+}
+
+function _guardarCronograma(tema) {
+  const dias     = parseInt(document.getElementById("plan-sched-dias")?.value) || 7;
+  const horaIni  = document.getElementById("plan-sched-hora-ini")?.value || "08:00";
+  const horaFin  = document.getElementById("plan-sched-hora-fin")?.value || "09:00";
+  const diasSem  = [...document.querySelectorAll("[name='plan-sched-dia']:checked")]
+                     .map(el => parseInt(el.value));
+
+  if (!diasSem.length) { toast("Seleccioná al menos un día de la semana"); return; }
+
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  const nuevo  = { id: Date.now(), tema, dias, horaIni, horaFin, diasSem, creado: new Date().toISOString() };
+  cronos.push(nuevo);
+  localStorage.setItem("atalaya-cronogramas", JSON.stringify(cronos));
+  _programarNotifHoy(nuevo);
+  toast(`Cronograma guardado. Notificación a las ${horaIni}`, 3000);
+}
+
+function _programarNotifHoy(c) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const ahora = new Date();
+  if (!c.diasSem.includes(ahora.getDay())) return;
+  const [h, m]  = c.horaIni.split(":").map(Number);
+  const hora    = new Date(); hora.setHours(h, m, 0, 0);
+  const delay   = hora - ahora;
+  if (delay <= 0) return;
+  setTimeout(() => {
+    new Notification("📚 Atalaya Pléyades", {
+      body: `Es hora de estudiar: ${c.tema}`,
+      tag:  `atalaya-${c.id}`,
+    });
+  }, delay);
+}
+
+function _iniciarNotificaciones() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  cronos.forEach(_programarNotifHoy);
 }
