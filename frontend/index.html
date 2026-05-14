@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Shaula — Agente de Estudio</title>
+  <title>Atalaya Pléyades</title>
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
@@ -21,8 +21,8 @@
           <span id="brand-avatar-fallback">🌟</span>
         </div>
         <div class="brand-info">
-          <span class="brand-name">Shaula</span>
-          <span class="brand-sub">Agente de Estudio</span>
+          <span class="brand-name">Atalaya Pléyades</span>
+          <span class="brand-sub">Shaula · Atlas · Electra</span>
         </div>
       </div>
       <button class="sidebar-toggle" id="sidebar-toggle" title="Colapsar menú">‹</button>
@@ -54,8 +54,8 @@
       <div class="nav-section">
         <span class="nav-section-label">Planificación</span>
         <button class="nav-item" data-tab="plan">
-          <span class="nav-icon">🗺️</span>
-          <span class="nav-label">Planificador</span>
+          <span class="nav-icon">🔭</span>
+          <span class="nav-label">Programador</span>
         </button>
         <button class="nav-item" data-tab="dashboard">
           <span class="nav-icon">📊</span>
@@ -162,12 +162,17 @@
         </div>
       </section>
 
-      <!-- ── PLANIFICADOR ── -->
+      <!-- ── PROGRAMADOR (Atlas + Electra) ── -->
       <section id="tab-plan" class="section">
 
         <!-- Encabezado -->
         <div class="row" style="margin-bottom:.9rem;">
-          <h2 style="flex:1">Planificador</h2>
+          <div style="flex:1;">
+            <h2 style="margin-bottom:.1rem;">Programador</h2>
+            <p style="font-size:.75rem; color:var(--text-muted); margin:0;">
+              Agente Atlas &amp; Agente Electra — coordinados por Shaula
+            </p>
+          </div>
           <button class="btn btn-secondary btn-sm" onclick="verHistorialPlanes()">📋 Historial</button>
         </div>
 
@@ -202,13 +207,13 @@
           <div class="card" id="plan-chat-area">
             <!-- Encabezado con indicador de agente activo -->
             <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.65rem; flex-wrap:wrap;">
-              <span id="plan-agente-badge" class="plan-agente-badge plan-agente-plan">🗺️ Planificador</span>
+              <span id="plan-agente-badge" class="plan-agente-badge plan-agente-plan">🗺️ Agente Atlas</span>
               <span id="plan-agente-desc" style="flex:1; font-size:.75rem; color:var(--text-muted);">
-                Responde dudas sobre el plan
+                Planificador — responde dudas sobre el plan
               </span>
               <button id="btn-toggle-evaluador" class="btn btn-secondary btn-sm"
                       onclick="toggleEvaluador()" title="Cambiar agente activo">
-                🎯 Activar Evaluador
+                ⚡ Activar Electra
               </button>
             </div>
             <div id="plan-chat-messages"

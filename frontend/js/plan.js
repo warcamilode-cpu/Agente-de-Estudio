@@ -93,16 +93,16 @@ function _actualizarIndicadorAgente() {
   if (!badge) return;
 
   if (_modoEval) {
-    badge.textContent = "🎯 Evaluador";
+    badge.textContent = "⚡ Agente Electra";
     badge.className   = "plan-agente-badge plan-agente-eval";
-    desc.textContent  = "Evaluando tu comprensión del tema";
-    btn.textContent   = "💬 Volver al Planificador";
-    input.placeholder = "Respondé las preguntas del Evaluador…";
+    desc.textContent  = "Evaluadora — verificando tu comprensión del tema";
+    btn.textContent   = "🗺️ Volver a Atlas";
+    input.placeholder = "Respondé las preguntas de Electra…";
   } else {
-    badge.textContent = "🗺️ Planificador";
+    badge.textContent = "🗺️ Agente Atlas";
     badge.className   = "plan-agente-badge plan-agente-plan";
-    desc.textContent  = "Responde dudas sobre el plan";
-    btn.textContent   = "🎯 Activar Evaluador";
+    desc.textContent  = "Planificador — responde dudas sobre el plan";
+    btn.textContent   = "⚡ Activar Electra";
     input.placeholder = "¿Tenés dudas sobre algún paso del plan?";
   }
 }
@@ -116,8 +116,8 @@ function toggleEvaluador() {
   const aviso   = document.createElement("div");
   aviso.style.cssText = "font-size:.78rem; color:var(--text-muted); text-align:center; padding:.3rem 0;";
   aviso.textContent   = _modoEval
-    ? "— Agente Evaluador activado —"
-    : "— Volviste al Planificador —";
+    ? "— Agente Electra (evaluadora) activada —"
+    : "— Volviste al Agente Atlas (planificador) —";
   msgArea.appendChild(aviso);
   msgArea.scrollTop = msgArea.scrollHeight;
 
