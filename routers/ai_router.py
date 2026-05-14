@@ -17,18 +17,18 @@ MAX_HISTORIAL = 20  # últimos 20 mensajes enviados al modelo (10 turnos)
 class ChatIn(BaseModel):
     session_id: str
     message: str
-    topic_id: int | None = None
+    materia_id: int | None = None
 
 
 # ── Sesiones ─────────────────────────────────────────────────────
 
 @router.post("/chat/nueva-sesion")
-def nueva_sesion(topic_id: int | None = None):
+def nueva_sesion(materia_id: int | None = None):
     session_id = str(uuid.uuid4())
     with db() as conn:
         conn.execute(
-            "INSERT INTO sesiones_chat (session_id, topic_id) VALUES (?, ?)",
-            (session_id, topic_id),
+            "INSERT INTO sesiones_chat (session_id, materia_id) VALUES (?, ?)",
+            (session_id, materia_id),
         )
     _cache[session_id] = []
     return {"session_id": session_id}
@@ -62,7 +62,7 @@ def eliminar_sesion(session_id: str):
 @router.post("/chat/stream")
 def chat_stream(body: ChatIn):
     historial = _cargar_historial(body.session_id)
-    system_prompt = _construir_prompt(body.message, body.topic_id)
+    system_prompt = _construir_prompt(body.message, body.materia_id)
 
     _guardar_mensaje(body.session_id, "user", body.message)
     historial.append({"role": "user", "content": body.message})
@@ -145,6 +145,6 @@ def _actualizar_titulo_si_es_primero(session_id: str, mensaje: str, historial: l
             )
 
 
-def _construir_prompt(mensaje: str, topic_id: int | None) -> str:
-    contexto, _ = context_builder.construir_contexto(mensaje, topic_id)
+def _construir_prompt(mensaje: str, materia_id: int | None) -> str:
+    contexto, _ = context_builder.construir_contexto(mensaje, materia_id)
     return context_builder.construir_system_prompt(contexto)

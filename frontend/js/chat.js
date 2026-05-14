@@ -87,7 +87,7 @@ chatForm.addEventListener("submit", async e => {
 
   _agregarMensaje("user", texto);
 
-  const topicId = document.getElementById("chat-topic").value || null;
+  const materiaId = document.getElementById("chat-materia").value || null;
   const burbuja = _agregarMensaje("assistant", "");
 
   const cursor = document.createElement("span");
@@ -104,7 +104,7 @@ chatForm.addEventListener("submit", async e => {
       body: JSON.stringify({
         session_id: _sessionId,
         message:    texto,
-        topic_id:   topicId ? +topicId : null,
+        materia_id: materiaId ? +materiaId : null,
       }),
     });
 

@@ -1,27 +1,41 @@
 from database.connection import db
 
 
-def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[str, int]:
-    terminos = mensaje.lower().split()
+def _like_where(terminos: list[str], columnas: list[str]) -> tuple[str, list]:
     condiciones = []
     params: list = []
-
     for t in terminos[:5]:
-        condiciones.append("(LOWER(titulo) LIKE ? OR LOWER(contenido) LIKE ? OR LOWER(tags) LIKE ?)")
         like = f"%{t}%"
-        params.extend([like, like, like])
+        cond = " OR ".join(f"LOWER({c}) LIKE ?" for c in columnas)
+        condiciones.append(f"({cond})")
+        params.extend([like] * len(columnas))
+    return (" OR ".join(condiciones) if condiciones else "1=1"), params
 
-    where = " OR ".join(condiciones) if condiciones else "1=1"
 
-    if topic_id is not None:
-        where = f"topic_id = ? AND ({where})"
-        params = [topic_id] + params
+def _buscar_apuntes(mensaje: str, materia_id: int | None, limite: int = 4) -> tuple[str, int]:
+    terminos = mensaje.lower().split()
+    where, params = _like_where(
+        terminos,
+        ["LOWER(ac.indicios)", "LOWER(ac.notas_principales)", "LOWER(ac.resumen)", "LOWER(c.titulo)", "LOWER(c.temas)"],
+    )
+
+    if materia_id is not None:
+        where = f"c.materia_id = ? AND ({where})"
+        params = [materia_id] + params
 
     params.append(limite)
 
     with db() as conn:
         rows = conn.execute(
-            f"SELECT titulo, contenido, tags FROM notas WHERE {where} LIMIT ?",
+            f"""SELECT c.titulo AS clase_titulo, c.fecha,
+                       m.nombre AS materia_nombre,
+                       ac.indicios, ac.notas_principales, ac.resumen
+                FROM apuntes_cornell ac
+                JOIN clases c ON c.id = ac.clase_id
+                JOIN materias m ON m.id = c.materia_id
+                WHERE {where}
+                ORDER BY c.fecha DESC
+                LIMIT ?""",
             params,
         ).fetchall()
 
@@ -30,29 +44,57 @@ def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[s
 
     fragmentos = []
     for r in rows:
-        tags = f" [tags: {r['tags']}]" if r["tags"] else ""
-        fragmentos.append(f"### {r['titulo']}{tags}\n{r['contenido']}")
+        partes = []
+        if r["indicios"]:
+            partes.append(f"**Pistas/indicios:** {r['indicios']}")
+        if r["notas_principales"]:
+            partes.append(f"**Notas:** {r['notas_principales']}")
+        if r["resumen"]:
+            partes.append(f"**Resumen:** {r['resumen']}")
+        cuerpo = "\n".join(partes) if partes else "(sin contenido)"
+        fragmentos.append(
+            f"### {r['materia_nombre']} — {r['clase_titulo']} ({r['fecha']})\n{cuerpo}"
+        )
 
     return "\n\n---\n\n".join(fragmentos), len(rows)
 
 
-def buscar_documentos(mensaje: str, topic_id: int | None, limite: int = 3) -> tuple[str, int]:
+def _buscar_referencias(mensaje: str, materia_id: int | None, limite: int = 6) -> tuple[str, int]:
     terminos = mensaje.lower().split()
-    condiciones = []
-    params: list = []
+    where, params = _like_where(terminos, ["LOWER(r.termino)", "LOWER(r.definicion)"])
 
-    for t in terminos[:5]:
-        condiciones.append(
-            "(LOWER(titulo) LIKE ? OR LOWER(contenido_texto) LIKE ? OR LOWER(tags) LIKE ?)"
-        )
-        like = f"%{t}%"
-        params.extend([like, like, like])
+    if materia_id is not None:
+        where = f"r.materia_id = ? AND ({where})"
+        params = [materia_id] + params
 
-    where = " OR ".join(condiciones) if condiciones else "1=1"
+    params.append(limite)
 
-    if topic_id is not None:
-        where = f"topic_id = ? AND ({where})"
-        params = [topic_id] + params
+    with db() as conn:
+        rows = conn.execute(
+            f"""SELECT r.termino, r.definicion, m.nombre AS materia_nombre
+                FROM referencias_rapidas r
+                JOIN materias m ON m.id = r.materia_id
+                WHERE {where}
+                LIMIT ?""",
+            params,
+        ).fetchall()
+
+    if not rows:
+        return "", 0
+
+    fragmentos = [f"- **{r['termino']}** ({r['materia_nombre']}): {r['definicion']}" for r in rows]
+    return "\n".join(fragmentos), len(rows)
+
+
+def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 3) -> tuple[str, int]:
+    terminos = mensaje.lower().split()
+    where, params = _like_where(
+        terminos, ["LOWER(titulo)", "LOWER(contenido_texto)", "LOWER(tags)"]
+    )
+
+    if materia_id is not None:
+        where = f"materia_id = ? AND ({where})"
+        params = [materia_id] + params
 
     params.append(limite)
 
@@ -68,7 +110,6 @@ def buscar_documentos(mensaje: str, topic_id: int | None, limite: int = 3) -> tu
     fragmentos = []
     for r in rows:
         tags = f" [tags: {r['tags']}]" if r["tags"] else ""
-        # Solo los primeros 1500 chars del texto para no saturar el contexto
         texto = (r["contenido_texto"] or "")[:1500]
         if len(r["contenido_texto"] or "") > 1500:
             texto += "\n[... texto truncado ...]"
@@ -77,17 +118,20 @@ def buscar_documentos(mensaje: str, topic_id: int | None, limite: int = 3) -> tu
     return "\n\n---\n\n".join(fragmentos), len(rows)
 
 
-def construir_contexto(mensaje: str, topic_id: int | None) -> str:
-    notas_txt, n_notas = buscar_notas(mensaje, topic_id, limite=4)
-    docs_txt, n_docs = buscar_documentos(mensaje, topic_id, limite=3)
+def construir_contexto(mensaje: str, materia_id: int | None) -> tuple[str, int]:
+    apuntes_txt, n_ap = _buscar_apuntes(mensaje, materia_id, limite=4)
+    refs_txt, n_refs = _buscar_referencias(mensaje, materia_id, limite=6)
+    docs_txt, n_docs = _buscar_documentos(mensaje, materia_id, limite=3)
 
     partes = []
-    if notas_txt:
-        partes.append("## Apuntes del estudiante\n\n" + notas_txt)
+    if apuntes_txt:
+        partes.append("## Apuntes del cuaderno (Cornell)\n\n" + apuntes_txt)
+    if refs_txt:
+        partes.append("## Referencias rápidas\n\n" + refs_txt)
     if docs_txt:
-        partes.append("## Documentos / lecturas del estudiante\n\n" + docs_txt)
+        partes.append("## Documentos / lecturas\n\n" + docs_txt)
 
-    return "\n\n".join(partes), n_notas + n_docs
+    return "\n\n".join(partes), n_ap + n_refs + n_docs
 
 
 def construir_system_prompt(contexto: str) -> str:
@@ -122,7 +166,7 @@ Propón una tarea concreta y pequeña que el estudiante pueda resolver en el cha
         return (
             f"{base}\n\n"
             "## Contexto del estudiante\n\n"
-            "Tenés acceso al siguiente material del estudiante (apuntes y documentos). "
+            "Tenés acceso al siguiente material del estudiante (apuntes, referencias y documentos). "
             "Usalo para personalizar las explicaciones. Si el tema está aquí, basate en este material:\n\n"
             f"{contexto}"
         )

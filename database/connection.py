@@ -107,6 +107,18 @@ def _migraciones(conn: sqlite3.Connection) -> None:
             CREATE INDEX idx_referencias_materia ON referencias_rapidas(materia_id);
         """)
 
+    # Migración: materia_id en tablas que antes usaban topic_id
+    columnas_fc   = {r[1] for r in conn.execute("PRAGMA table_info(flashcards)")}
+    columnas_docs = {r[1] for r in conn.execute("PRAGMA table_info(documentos)")}
+    columnas_sc   = {r[1] for r in conn.execute("PRAGMA table_info(sesiones_chat)")} if "sesiones_chat" in tablas else set()
+
+    if "materia_id" not in columnas_fc:
+        conn.execute("ALTER TABLE flashcards ADD COLUMN materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL")
+    if "materia_id" not in columnas_docs:
+        conn.execute("ALTER TABLE documentos ADD COLUMN materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL")
+    if "sesiones_chat" in tablas and "materia_id" not in columnas_sc:
+        conn.execute("ALTER TABLE sesiones_chat ADD COLUMN materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL")
+
     if "sesiones_chat" not in tablas:
         conn.executescript("""
             CREATE TABLE sesiones_chat (

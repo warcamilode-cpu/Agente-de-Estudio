@@ -1,8 +1,8 @@
 // Módulo de repositorio de documentos
 
 async function cargarDocumentos() {
-  const topicId = document.getElementById("docs-filtro-topic")?.value || "";
-  const ruta = topicId ? `/documentos?topic_id=${topicId}` : "/documentos";
+  const materiaId = document.getElementById("docs-filtro-materia")?.value || "";
+  const ruta = materiaId ? `/documentos?materia_id=${materiaId}` : "/documentos";
   const docs = await api("GET", ruta);
   _renderDocumentos(docs);
 }
@@ -39,9 +39,9 @@ function _escDoc(str)    { return String(str||"").replace(/'/g,"\\'").replace(/"
 // ── Visor embebido ───────────────────────────────────────────────
 
 async function verDocumento(id, titulo, tipo) {
-  const modal   = document.getElementById("modal-doc-visor");
+  const modal    = document.getElementById("modal-doc-visor");
   const tituloEl = document.getElementById("mdv-titulo");
-  const cuerpo  = document.getElementById("mdv-cuerpo");
+  const cuerpo   = document.getElementById("mdv-cuerpo");
 
   tituloEl.textContent = titulo;
   cuerpo.innerHTML = '<p style="color:var(--text-muted)">Cargando…</p>';
@@ -51,7 +51,7 @@ async function verDocumento(id, titulo, tipo) {
     cuerpo.innerHTML = `<iframe src="/documentos/${id}/archivo" style="width:100%; height:70dvh; border:none; border-radius:8px;"></iframe>`;
   } else {
     try {
-      const resp = await fetch(`/documentos/${id}/archivo`);
+      const resp  = await fetch(`/documentos/${id}/archivo`);
       const texto = await resp.text();
       if (tipo === "md") {
         cuerpo.innerHTML = `<div class="msg assistant" style="max-width:100%; background:var(--surface2);">${marked.parse(texto)}</div>`;
@@ -84,39 +84,26 @@ function abrirModalSubirDoc() {
   document.getElementById("md-titulo").value  = "";
   document.getElementById("md-archivo").value = "";
   document.getElementById("md-tags").value    = "";
-  _poblarSelectDocs();
 }
 
 function cerrarModalDoc() {
   document.getElementById("modal-doc").classList.remove("open");
 }
 
-function _poblarSelectDocs() {
-  const sel = document.getElementById("md-topic");
-  if (!sel) return;
-  sel.innerHTML = '<option value="">— Sin tema —</option>';
-  _topics.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = t.nombre;
-    sel.appendChild(opt);
-  });
-}
-
 async function subirDocumento() {
-  const archivo = document.getElementById("md-archivo").files[0];
-  const titulo  = document.getElementById("md-titulo").value.trim();
-  const topicId = document.getElementById("md-topic").value;
-  const tags    = document.getElementById("md-tags").value.trim();
+  const archivo   = document.getElementById("md-archivo").files[0];
+  const titulo    = document.getElementById("md-titulo").value.trim();
+  const materiaId = document.getElementById("docs-materia").value;
+  const tags      = document.getElementById("md-tags").value.trim();
 
   if (!archivo) { toast("Seleccioná un archivo"); return; }
   if (!titulo)  { toast("Escribí un título"); return; }
 
   const formData = new FormData();
-  formData.append("archivo", archivo);
-  formData.append("titulo", titulo);
-  formData.append("topic_id", topicId);
-  formData.append("tags", tags);
+  formData.append("archivo",    archivo);
+  formData.append("titulo",     titulo);
+  formData.append("materia_id", materiaId);
+  formData.append("tags",       tags);
 
   const btn = document.getElementById("btn-subir-doc");
   btn.disabled = true; btn.textContent = "Subiendo…";
@@ -149,6 +136,6 @@ async function eliminarDoc(id) {
 // ── Listeners ────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("docs-filtro-topic")?.addEventListener("change", cargarDocumentos);
+  document.getElementById("docs-filtro-materia")?.addEventListener("change", cargarDocumentos);
   document.getElementById("btn-subir-archivo")?.addEventListener("click", abrirModalSubirDoc);
 });

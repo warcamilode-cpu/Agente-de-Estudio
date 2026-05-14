@@ -21,16 +21,16 @@ MIME_SALIDA = {"pdf": "application/pdf", "txt": "text/plain", "md": "text/plain;
 
 
 @router.get("")
-def listar_documentos(topic_id: int | None = None):
+def listar_documentos(materia_id: int | None = None):
     with db() as conn:
-        if topic_id is not None:
+        if materia_id is not None:
             rows = conn.execute(
-                "SELECT id, topic_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE topic_id = ? ORDER BY creado_at DESC",
-                (topic_id,),
+                "SELECT id, materia_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE materia_id = ? ORDER BY creado_at DESC",
+                (materia_id,),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT id, topic_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos ORDER BY creado_at DESC"
+                "SELECT id, materia_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos ORDER BY creado_at DESC"
             ).fetchall()
     return [dict(r) for r in rows]
 
@@ -64,7 +64,7 @@ def servir_archivo(doc_id: int):
 async def subir_documento(
     archivo: UploadFile = File(...),
     titulo: str = Form(...),
-    topic_id: str = Form(""),
+    materia_id: str = Form(""),
     tags: str = Form(""),
 ):
     tipo = TIPOS_MIME.get(archivo.content_type or "")
@@ -83,12 +83,12 @@ async def subir_documento(
     ruta.write_bytes(contenido)
 
     texto = extraer_texto(str(ruta))
-    topic_id_val = int(topic_id) if topic_id.strip() else None
+    materia_id_val = int(materia_id) if materia_id.strip() else None
 
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO documentos (topic_id, titulo, tipo, archivo_nombre, archivo_path, contenido_texto, tags) VALUES (?,?,?,?,?,?,?)",
-            (topic_id_val, titulo, tipo, archivo.filename, nombre_unico, texto, tags),
+            "INSERT INTO documentos (materia_id, titulo, tipo, archivo_nombre, archivo_path, contenido_texto, tags) VALUES (?,?,?,?,?,?,?)",
+            (materia_id_val, titulo, tipo, archivo.filename, nombre_unico, texto, tags),
         )
         row = conn.execute("SELECT * FROM documentos WHERE id = ?", (cur.lastrowid,)).fetchone()
     return dict(row)

@@ -38,10 +38,6 @@
       </div>
       <div class="nav-section">
         <span class="nav-section-label">Material de estudio</span>
-        <button class="nav-item" data-tab="temas">
-          <span class="nav-icon">📚</span>
-          <span class="nav-label">Temas y cursos</span>
-        </button>
         <button class="nav-item" data-tab="cuaderno">
           <span class="nav-icon">📖</span>
           <span class="nav-label">Cuaderno Cornell</span>
@@ -88,19 +84,10 @@
           <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
         </div>
         <form id="chat-form">
-          <select id="chat-topic" style="max-width:160px"></select>
+          <select id="chat-materia" style="max-width:160px"></select>
           <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off">
           <button type="submit" class="btn btn-primary">Enviar</button>
         </form>
-      </section>
-
-      <!-- ── TEMAS ── -->
-      <section id="tab-temas" class="section">
-        <div class="row">
-          <h2 style="flex:1">Mis temas de estudio</h2>
-          <button class="btn btn-primary" id="btn-nuevo-tema">+ Nuevo curso</button>
-        </div>
-        <div id="temas-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
       </section>
 
       <!-- ── CUADERNO ── -->
@@ -126,7 +113,7 @@
       <!-- ── FLASHCARDS ── -->
       <section id="tab-flashcards" class="section">
         <div class="row">
-          <select id="fc-filtro-topic"><option value="">Todos los temas</option></select>
+          <select id="fc-filtro-materia"><option value="">Todas las materias</option></select>
           <button class="btn btn-primary" id="btn-nueva-card">+ Nueva card</button>
           <button class="btn btn-secondary" id="btn-modo-repaso">Repasar pendientes</button>
         </div>
@@ -153,7 +140,7 @@
       <!-- ── DOCUMENTOS ── -->
       <section id="tab-documentos" class="section">
         <div class="row">
-          <select id="docs-filtro-topic"><option value="">Todos los temas</option></select>
+          <select id="docs-filtro-materia"><option value="">Todas las materias</option></select>
           <button class="btn btn-primary" id="btn-subir-archivo">+ Subir documento</button>
         </div>
         <p style="font-size:.8rem; color:var(--text-muted);">Formatos aceptados: PDF, TXT, Markdown, JSON</p>
@@ -221,7 +208,7 @@
 <div class="modal-overlay" id="modal-card">
   <div class="modal">
     <h2 id="modal-card-titulo">Nueva flashcard</h2>
-    <div><label>Tema</label><select id="mc-topic"></select></div>
+    <div><label>Materia</label><select id="mc-materia"></select></div>
     <div><label>Pregunta</label><textarea id="mc-pregunta" rows="3"></textarea></div>
     <div><label>Respuesta</label><textarea id="mc-respuesta" rows="4"></textarea></div>
     <div class="modal-actions">
@@ -237,7 +224,7 @@
     <h2>Subir documento</h2>
     <div><label>Archivo (PDF, TXT, MD, JSON)</label><input id="md-archivo" type="file" accept=".pdf,.txt,.md,.json"></div>
     <div><label>Título</label><input id="md-titulo" type="text" placeholder="Ej: Guía de tutela — Semana 3"></div>
-    <div><label>Tema</label><select id="md-topic"></select></div>
+    <div><label>Materia</label><select id="docs-materia"></select></div>
     <div><label>Tags</label><input id="md-tags" type="text" placeholder="lectura, guia, parcial…"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarModalDoc()">Cancelar</button>
@@ -306,7 +293,6 @@
 <script>marked.setOptions({ breaks: true, gfm: true });</script>
 <script src="/static/js/app.js"></script>
 <script src="/static/js/chat.js"></script>
-<script src="/static/js/temas.js"></script>
 <script src="/static/js/cuaderno.js"></script>
 <script src="/static/js/flashcards.js"></script>
 <script src="/static/js/documentos.js"></script>

@@ -6,8 +6,8 @@ let _pendienteIdx = 0;
 
 // ── Carga lista ──────────────────────────────────────────────────
 async function cargarFlashcards() {
-  const topicId = document.getElementById("fc-filtro-topic").value;
-  const params = topicId ? `?topic_id=${topicId}` : "";
+  const materiaId = document.getElementById("fc-filtro-materia").value;
+  const params = materiaId ? `?materia_id=${materiaId}` : "";
   const cards = await api("GET", `/flashcards${params}`);
 
   const lista = document.getElementById("fc-lista");
@@ -38,16 +38,16 @@ async function cargarFlashcards() {
   });
 }
 
-document.getElementById("fc-filtro-topic").addEventListener("change", cargarFlashcards);
+document.getElementById("fc-filtro-materia").addEventListener("change", cargarFlashcards);
 document.getElementById("btn-nueva-card").addEventListener("click", () => abrirModalCard());
 
 // ── Modal flashcard ──────────────────────────────────────────────
 function abrirModalCard(card = null) {
   _cardEditandoId = card ? card.id : null;
   document.getElementById("modal-card-titulo").textContent = card ? "Editar flashcard" : "Nueva flashcard";
-  document.getElementById("mc-pregunta").value  = card?.pregunta  ?? "";
-  document.getElementById("mc-respuesta").value = card?.respuesta ?? "";
-  document.getElementById("mc-topic").value     = card?.topic_id  ?? "";
+  document.getElementById("mc-pregunta").value  = card?.pregunta   ?? "";
+  document.getElementById("mc-respuesta").value = card?.respuesta  ?? "";
+  document.getElementById("mc-materia").value   = card?.materia_id ?? "";
   document.getElementById("modal-card").classList.add("open");
 }
 
@@ -58,9 +58,9 @@ function cerrarModalCard() {
 
 async function guardarCard() {
   const body = {
-    pregunta:  document.getElementById("mc-pregunta").value.trim(),
-    respuesta: document.getElementById("mc-respuesta").value.trim(),
-    topic_id:  document.getElementById("mc-topic").value || null,
+    pregunta:   document.getElementById("mc-pregunta").value.trim(),
+    respuesta:  document.getElementById("mc-respuesta").value.trim(),
+    materia_id: document.getElementById("mc-materia").value || null,
   };
   if (!body.pregunta || !body.respuesta) { toast("Pregunta y respuesta son obligatorias"); return; }
 
@@ -92,9 +92,9 @@ async function eliminarCard(id) {
 document.getElementById("btn-modo-repaso").addEventListener("click", iniciarRepaso);
 
 async function iniciarRepaso() {
-  const topicId = document.getElementById("fc-filtro-topic").value;
-  const params  = topicId ? `?topic_id=${topicId}` : "";
-  _pendientes   = await api("GET", `/flashcards/pendientes${params}`);
+  const materiaId = document.getElementById("fc-filtro-materia").value;
+  const params    = materiaId ? `?materia_id=${materiaId}` : "";
+  _pendientes     = await api("GET", `/flashcards/pendientes${params}`);
 
   if (!_pendientes.length) { toast("No hay cards pendientes hoy 🎉"); return; }
 

@@ -1,6 +1,6 @@
 // Router de tabs, sidebar y utilidades globales
 
-const TABS = ["chat", "temas", "cuaderno", "flashcards", "documentos", "plan", "dashboard"];
+const TABS = ["chat", "cuaderno", "flashcards", "documentos", "plan", "dashboard"];
 
 // ── Sidebar toggle ──────────────────────────────────────────────
 const sidebar       = document.getElementById("sidebar");
@@ -10,7 +10,6 @@ function _aplicarEstadoSidebar(colapsado) {
   sidebar.classList.toggle("collapsed", colapsado);
   sidebarToggle.textContent = colapsado ? "›" : "‹";
   sidebarToggle.title       = colapsado ? "Expandir menú" : "Colapsar menú";
-  // Ocultar fallback del avatar cuando hay imagen
   const img = sidebar.querySelector(".brand-avatar img");
   const fallback = document.getElementById("brand-avatar-fallback");
   if (img && fallback) {
@@ -25,7 +24,6 @@ sidebarToggle.addEventListener("click", () => {
   _aplicarEstadoSidebar(colapsado);
 });
 
-// Restaurar estado guardado
 const _guardado = localStorage.getItem("sidebar-colapsado") === "true";
 _aplicarEstadoSidebar(_guardado);
 
@@ -41,13 +39,11 @@ function cambiarTab(nombre) {
   document.querySelectorAll(".section").forEach(s =>
     s.classList.toggle("active", s.id === `tab-${nombre}`)
   );
-  if (nombre === "temas")      cargarTemas();
   if (nombre === "cuaderno")   cargarCuaderno();
   if (nombre === "flashcards") cargarFlashcards();
   if (nombre === "documentos") cargarDocumentos();
   if (nombre === "dashboard")  cargarDashboard();
 
-  // En móvil, cerrar sidebar al navegar
   if (window.innerWidth < 640) _aplicarEstadoSidebar(true);
 }
 
@@ -71,68 +67,60 @@ function toast(msg, ms = 2500) {
   _toastTimer = setTimeout(() => el.classList.remove("show"), ms);
 }
 
-// ── Topics: cache compartido ────────────────────────────────────
-let _topics = [];
-let _arbol  = [];
+// ── Materias: cache compartido (desde cuaderno/estructura) ──────
+let _estructura = [];   // [{id, nombre, materias: [{id, nombre, emoji, color}]}]
+let _materias   = [];   // lista plana de todas las materias
 
-async function cargarTopics() {
-  [_topics, _arbol] = await Promise.all([
-    api("GET", "/topics"),
-    api("GET", "/topics/arbol"),
-  ]);
+async function cargarEstructura() {
+  try {
+    _estructura = await api("GET", "/cuaderno/estructura");
+    _materias = _estructura.flatMap(s => s.materias || []);
+  } catch {
+    _estructura = [];
+    _materias = [];
+  }
   _poblarSelects();
 }
 
 function _poblarSelects() {
-  const todosIds = [
-    "chat-topic", "notas-filtro-topic", "fc-filtro-topic",
-    "docs-filtro-topic", "mn-topic", "mc-topic",
-  ];
-  const esFiltro = new Set([
-    "chat-topic", "notas-filtro-topic", "fc-filtro-topic", "docs-filtro-topic",
-  ]);
+  // IDs de selects que muestran materias
+  const filtroIds = ["chat-materia", "fc-filtro-materia", "docs-filtro-materia"];
+  const modalIds  = ["mc-materia", "docs-materia"];
 
-  todosIds.forEach(id => {
+  filtroIds.forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     const val = sel.value;
-    sel.innerHTML = esFiltro.has(id)
-      ? '<option value="">— Sin filtro —</option>'
-      : '<option value="">— Sin tema —</option>';
+    sel.innerHTML = '<option value="">— Sin filtro —</option>';
+    _poblarOpcionesMaterias(sel);
+    if (val) sel.value = val;
+  });
 
-    _arbol.forEach(curso => {
-      const bloques = curso.bloques || [];
-      if (!bloques.length) {
-        const opt = document.createElement("option");
-        opt.value = curso.id;
-        opt.textContent = curso.nombre;
-        sel.appendChild(opt);
-        return;
-      }
-      bloques.forEach(bloque => {
-        const temas = bloque.temas || [];
-        const grp   = document.createElement("optgroup");
-        grp.label   = `${curso.nombre} › ${bloque.nombre}`;
-        if (!temas.length) {
-          const opt = document.createElement("option");
-          opt.value = bloque.id;
-          opt.textContent = bloque.nombre;
-          grp.appendChild(opt);
-        } else {
-          temas.forEach(t => {
-            const opt = document.createElement("option");
-            opt.value = t.id;
-            opt.textContent = t.nombre;
-            grp.appendChild(opt);
-          });
-        }
-        sel.appendChild(grp);
-      });
-    });
-
+  modalIds.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const val = sel.value;
+    sel.innerHTML = '<option value="">— Sin materia —</option>';
+    _poblarOpcionesMaterias(sel);
     if (val) sel.value = val;
   });
 }
 
+function _poblarOpcionesMaterias(sel) {
+  _estructura.forEach(sem => {
+    const mats = sem.materias || [];
+    if (!mats.length) return;
+    const grp = document.createElement("optgroup");
+    grp.label = sem.nombre;
+    mats.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = `${m.emoji || "📚"} ${m.nombre}`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+}
+
 // Inicialización
-cargarTopics();
+cargarEstructura();
