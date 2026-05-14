@@ -14,7 +14,6 @@
        SIDEBAR
   ══════════════════════════════════ -->
   <aside class="sidebar" id="sidebar">
-
     <div class="sidebar-header">
       <div class="brand">
         <div class="brand-avatar">
@@ -30,7 +29,6 @@
     </div>
 
     <nav class="sidebar-nav">
-
       <div class="nav-section">
         <span class="nav-section-label">Principal</span>
         <button class="nav-item active" data-tab="chat">
@@ -38,16 +36,15 @@
           <span class="nav-label">Chat con Shaula</span>
         </button>
       </div>
-
       <div class="nav-section">
         <span class="nav-section-label">Material de estudio</span>
         <button class="nav-item" data-tab="temas">
           <span class="nav-icon">📚</span>
           <span class="nav-label">Temas y cursos</span>
         </button>
-        <button class="nav-item" data-tab="notas">
-          <span class="nav-icon">📝</span>
-          <span class="nav-label">Notas y apuntes</span>
+        <button class="nav-item" data-tab="cuaderno">
+          <span class="nav-icon">📖</span>
+          <span class="nav-label">Cuaderno Cornell</span>
         </button>
         <button class="nav-item" data-tab="flashcards">
           <span class="nav-icon">🃏</span>
@@ -58,7 +55,6 @@
           <span class="nav-label">Documentos</span>
         </button>
       </div>
-
       <div class="nav-section">
         <span class="nav-section-label">Planificación</span>
         <button class="nav-item" data-tab="plan">
@@ -70,9 +66,7 @@
           <span class="nav-label">Dashboard</span>
         </button>
       </div>
-
     </nav>
-
   </aside>
 
   <!-- ══════════════════════════════════
@@ -109,14 +103,24 @@
         <div id="temas-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
       </section>
 
-      <!-- ── NOTAS ── -->
-      <section id="tab-notas" class="section">
-        <div class="row">
-          <input id="notas-busqueda" type="text" placeholder="Buscar notas…">
-          <select id="notas-filtro-topic"><option value="">Todos los temas</option></select>
-          <button class="btn btn-primary" id="btn-nueva-nota">+ Nueva nota</button>
+      <!-- ── CUADERNO ── -->
+      <section id="tab-cuaderno" class="section" style="padding:0; overflow:hidden;">
+        <div class="cuaderno-shell">
+          <!-- Panel nav del cuaderno -->
+          <div class="cuaderno-nav">
+            <div class="cuaderno-nav-scroll" id="cn-nav-scroll"></div>
+            <div class="cuaderno-nav-footer">
+              <button class="btn btn-primary btn-sm" id="btn-nuevo-semestre" style="width:100%">+ Agregar semestre</button>
+            </div>
+          </div>
+          <!-- Contenido del cuaderno -->
+          <div class="cuaderno-contenido" id="cn-contenido">
+            <div class="cuaderno-vacia">
+              <div class="icon">📖</div>
+              <p>Seleccioná una materia o creá tu primer semestre.</p>
+            </div>
+          </div>
         </div>
-        <div id="notas-lista"></div>
       </section>
 
       <!-- ── FLASHCARDS ── -->
@@ -152,7 +156,8 @@
           <select id="docs-filtro-topic"><option value="">Todos los temas</option></select>
           <button class="btn btn-primary" id="btn-subir-archivo">+ Subir documento</button>
         </div>
-        <div id="docs-lista" style="display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem;"></div>
+        <p style="font-size:.8rem; color:var(--text-muted);">Formatos aceptados: PDF, TXT, Markdown, JSON</p>
+        <div id="docs-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
       </section>
 
       <!-- ── PLAN ── -->
@@ -177,7 +182,6 @@
 
     </main>
   </div>
-
 </div>
 
 <!-- ══════════════════════════════════
@@ -199,14 +203,8 @@
 <div class="modal-overlay" id="modal-tema">
   <div class="modal">
     <h2 id="modal-tema-titulo">Nuevo tema</h2>
-    <div>
-      <label>Nombre del tema</label>
-      <input id="mt-nombre" type="text" placeholder="Ej: Derecho Constitucional">
-    </div>
-    <div>
-      <label>Descripción (opcional)</label>
-      <input id="mt-descripcion" type="text" placeholder="Breve descripción">
-    </div>
+    <div><label>Nombre</label><input id="mt-nombre" type="text" placeholder="Ej: Derecho Constitucional"></div>
+    <div><label>Descripción</label><input id="mt-descripcion" type="text"></div>
     <div>
       <label>Color</label>
       <div class="color-picker" id="mt-color-picker"></div>
@@ -219,49 +217,13 @@
   </div>
 </div>
 
-<!-- Modal nota -->
-<div class="modal-overlay" id="modal-nota">
-  <div class="modal">
-    <h2 id="modal-nota-titulo">Nueva nota</h2>
-    <div>
-      <label>Título</label>
-      <input id="mn-titulo" type="text" placeholder="Título de la nota">
-    </div>
-    <div>
-      <label>Tema</label>
-      <select id="mn-topic"></select>
-    </div>
-    <div>
-      <label>Tags (separados por coma)</label>
-      <input id="mn-tags" type="text" placeholder="tutela, derechos, python…">
-    </div>
-    <div>
-      <label>Contenido (Markdown)</label>
-      <textarea id="mn-contenido" rows="8"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="cerrarModalNota()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarNota()">Guardar</button>
-    </div>
-  </div>
-</div>
-
 <!-- Modal flashcard -->
 <div class="modal-overlay" id="modal-card">
   <div class="modal">
     <h2 id="modal-card-titulo">Nueva flashcard</h2>
-    <div>
-      <label>Tema</label>
-      <select id="mc-topic"></select>
-    </div>
-    <div>
-      <label>Pregunta</label>
-      <textarea id="mc-pregunta" rows="3"></textarea>
-    </div>
-    <div>
-      <label>Respuesta</label>
-      <textarea id="mc-respuesta" rows="4"></textarea>
-    </div>
+    <div><label>Tema</label><select id="mc-topic"></select></div>
+    <div><label>Pregunta</label><textarea id="mc-pregunta" rows="3"></textarea></div>
+    <div><label>Respuesta</label><textarea id="mc-respuesta" rows="4"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarModalCard()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCard()">Guardar</button>
@@ -273,22 +235,10 @@
 <div class="modal-overlay" id="modal-doc">
   <div class="modal">
     <h2>Subir documento</h2>
-    <div>
-      <label>Archivo (PDF, DOCX, TXT)</label>
-      <input id="md-archivo" type="file" accept=".pdf,.docx,.doc,.txt">
-    </div>
-    <div>
-      <label>Título</label>
-      <input id="md-titulo" type="text" placeholder="Ej: Guía de tutela — Semana 3">
-    </div>
-    <div>
-      <label>Tema</label>
-      <select id="md-topic"></select>
-    </div>
-    <div>
-      <label>Tags (separados por coma)</label>
-      <input id="md-tags" type="text" placeholder="lectura, guia, parcial…">
-    </div>
+    <div><label>Archivo (PDF, TXT, MD, JSON)</label><input id="md-archivo" type="file" accept=".pdf,.txt,.md,.json"></div>
+    <div><label>Título</label><input id="md-titulo" type="text" placeholder="Ej: Guía de tutela — Semana 3"></div>
+    <div><label>Tema</label><select id="md-topic"></select></div>
+    <div><label>Tags</label><input id="md-tags" type="text" placeholder="lectura, guia, parcial…"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarModalDoc()">Cancelar</button>
       <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDocumento()">Subir</button>
@@ -296,13 +246,56 @@
   </div>
 </div>
 
-<!-- Modal ver texto documento -->
-<div class="modal-overlay" id="modal-doc-texto">
-  <div class="modal" style="max-width:720px;">
-    <h2 id="mdt-titulo"></h2>
-    <pre id="mdt-contenido" style="white-space:pre-wrap; max-height:60dvh; overflow-y:auto; font-size:.85rem; background:var(--surface2); padding:.75rem; border-radius:.5rem;"></pre>
+<!-- Modal visor de documento -->
+<div class="modal-overlay" id="modal-doc-visor">
+  <div class="modal" style="max-width:860px; width:95vw;">
+    <h2 id="mdv-titulo"></h2>
+    <div id="mdv-cuerpo" style="max-height:75dvh; overflow-y:auto;"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="cerrarModalDocTexto()">Cerrar</button>
+      <button class="btn btn-secondary" onclick="cerrarVisorDoc()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal materia del cuaderno -->
+<div class="modal-overlay" id="modal-cuaderno-materia">
+  <div class="modal">
+    <h2 id="modal-cm-titulo">Nueva materia</h2>
+    <input type="hidden" id="cm-id">
+    <input type="hidden" id="cm-semestre-id">
+    <div style="display:flex; gap:.75rem;">
+      <div style="flex:0 0 80px;">
+        <label>Emoji</label>
+        <input id="cm-emoji" type="text" value="📚" style="text-align:center; font-size:1.5rem;">
+      </div>
+      <div style="flex:1">
+        <label>Nombre de la materia</label>
+        <input id="cm-nombre" type="text" placeholder="Ej: Derecho Constitucional">
+      </div>
+    </div>
+    <div>
+      <label>Color identificador</label>
+      <div class="color-picker" id="cm-color-picker"></div>
+      <input type="hidden" id="cm-color" value="#6366f1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalCuadernoMateria()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMateria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva clase -->
+<div class="modal-overlay" id="modal-cuaderno-clase">
+  <div class="modal">
+    <h2>Nueva clase</h2>
+    <input type="hidden" id="cc-materia-id">
+    <div><label>Fecha</label><input id="cc-fecha" type="date"></div>
+    <div><label>Título</label><input id="cc-titulo" type="text" placeholder="Ej: Introducción a la tutela"></div>
+    <div><label>Temas tratados (opcional)</label><input id="cc-temas" type="text" placeholder="Ej: Definición, requisitos, procedencia"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalCuadernoClase()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarClase()">Crear y abrir apuntes</button>
     </div>
   </div>
 </div>
@@ -314,7 +307,7 @@
 <script src="/static/js/app.js"></script>
 <script src="/static/js/chat.js"></script>
 <script src="/static/js/temas.js"></script>
-<script src="/static/js/notas.js"></script>
+<script src="/static/js/cuaderno.js"></script>
 <script src="/static/js/flashcards.js"></script>
 <script src="/static/js/documentos.js"></script>
 <script src="/static/js/plan.js"></script>

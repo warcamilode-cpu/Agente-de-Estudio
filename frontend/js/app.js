@@ -1,6 +1,6 @@
 // Router de tabs, sidebar y utilidades globales
 
-const TABS = ["chat", "temas", "notas", "flashcards", "documentos", "plan", "dashboard"];
+const TABS = ["chat", "temas", "cuaderno", "flashcards", "documentos", "plan", "dashboard"];
 
 // ── Sidebar toggle ──────────────────────────────────────────────
 const sidebar       = document.getElementById("sidebar");
@@ -42,7 +42,7 @@ function cambiarTab(nombre) {
     s.classList.toggle("active", s.id === `tab-${nombre}`)
   );
   if (nombre === "temas")      cargarTemas();
-  if (nombre === "notas")      cargarNotas();
+  if (nombre === "cuaderno")   cargarCuaderno();
   if (nombre === "flashcards") cargarFlashcards();
   if (nombre === "documentos") cargarDocumentos();
   if (nombre === "dashboard")  cargarDashboard();
