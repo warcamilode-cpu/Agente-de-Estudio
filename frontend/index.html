@@ -8,123 +8,183 @@
 </head>
 <body>
 
-<nav>
-  <button class="active" data-tab="chat">💬 Shaula</button>
-  <button data-tab="temas">📚 Temas</button>
-  <button data-tab="notas">📝 Notas</button>
-  <button data-tab="flashcards">🃏 Flashcards</button>
-  <button data-tab="documentos">📁 Documentos</button>
-  <button data-tab="plan">🗺️ Plan</button>
-  <button data-tab="dashboard">📊 Dashboard</button>
-</nav>
+<div class="app-shell">
 
-<main>
+  <!-- ══════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
 
-  <!-- ── CHAT ── -->
-  <section id="tab-chat" class="section active">
-
-    <!-- Barra de sesión activa -->
-    <div id="chat-sesion-bar">
-      <span id="chat-sesion-titulo" class="sesion-titulo">Nueva sesión</span>
-      <div class="row" style="gap:.4rem; flex-shrink:0">
-        <button class="btn btn-secondary btn-sm" onclick="abrirSesiones()">📋 Sesiones</button>
-        <button class="btn btn-secondary btn-sm" onclick="nuevaSesionChat()">+ Nueva</button>
-      </div>
-    </div>
-
-    <div id="chat-messages">
-      <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
-    </div>
-
-    <form id="chat-form">
-      <select id="chat-topic" style="max-width:160px"></select>
-      <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off">
-      <button type="submit" class="btn btn-primary">Enviar</button>
-    </form>
-  </section>
-
-  <!-- ── TEMAS ── -->
-  <section id="tab-temas" class="section">
-    <div class="row">
-      <h2 style="flex:1">Mis temas de estudio</h2>
-      <button class="btn btn-primary" id="btn-nuevo-tema">+ Nuevo curso</button>
-    </div>
-    <div id="temas-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
-  </section>
-
-  <!-- ── NOTAS ── -->
-  <section id="tab-notas" class="section">
-    <div class="row">
-      <input id="notas-busqueda" type="text" placeholder="Buscar notas…">
-      <select id="notas-filtro-topic"><option value="">Todos los temas</option></select>
-      <button class="btn btn-primary" id="btn-nueva-nota">+ Nueva nota</button>
-    </div>
-    <div id="notas-lista"></div>
-  </section>
-
-  <!-- ── FLASHCARDS ── -->
-  <section id="tab-flashcards" class="section">
-    <div class="row">
-      <select id="fc-filtro-topic"><option value="">Todos los temas</option></select>
-      <button class="btn btn-primary" id="btn-nueva-card">+ Nueva card</button>
-      <button class="btn btn-secondary" id="btn-modo-repaso">Repasar pendientes</button>
-    </div>
-
-    <!-- modo repaso -->
-    <div id="fc-repaso" style="display:none; flex-direction:column; gap:1rem; align-items:center;">
-      <p id="fc-repaso-contador" style="color:var(--text-muted); font-size:.9rem;"></p>
-      <div class="flashcard-flip card" id="fc-flip" style="width:100%; max-width:560px;" onclick="fcFlip()">
-        <div class="flashcard-inner">
-          <div class="flashcard-front" id="fc-pregunta"></div>
-          <div class="flashcard-back"  id="fc-respuesta"></div>
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-avatar">
+          <img src="/static/img/shaula.png" alt="Shaula" onerror="this.style.display='none'">
+          <span id="brand-avatar-fallback">🌟</span>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">Shaula</span>
+          <span class="brand-sub">Agente de Estudio</span>
         </div>
       </div>
-      <div class="rating-row" id="fc-rating-row" style="display:none; width:100%; max-width:560px;">
-        <button class="btn btn-danger btn-sm"     onclick="fcCalificar(0)">0 – Nada</button>
-        <button class="btn btn-secondary btn-sm"  onclick="fcCalificar(2)">2 – Difícil</button>
-        <button class="btn btn-secondary btn-sm"  onclick="fcCalificar(3)">3 – Bien</button>
-        <button class="btn btn-primary btn-sm"    onclick="fcCalificar(4)">4 – Fácil</button>
-        <button class="btn btn-primary btn-sm"    onclick="fcCalificar(5)">5 – Perfecto</button>
+      <button class="sidebar-toggle" id="sidebar-toggle" title="Colapsar menú">‹</button>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section">
+        <span class="nav-section-label">Principal</span>
+        <button class="nav-item active" data-tab="chat">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label">Chat con Shaula</span>
+        </button>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="fcSalirRepaso()">Salir del repaso</button>
-    </div>
 
-    <!-- lista -->
-    <div id="fc-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
-  </section>
+      <div class="nav-section">
+        <span class="nav-section-label">Material de estudio</span>
+        <button class="nav-item" data-tab="temas">
+          <span class="nav-icon">📚</span>
+          <span class="nav-label">Temas y cursos</span>
+        </button>
+        <button class="nav-item" data-tab="notas">
+          <span class="nav-icon">📝</span>
+          <span class="nav-label">Notas y apuntes</span>
+        </button>
+        <button class="nav-item" data-tab="flashcards">
+          <span class="nav-icon">🃏</span>
+          <span class="nav-label">Flashcards</span>
+        </button>
+        <button class="nav-item" data-tab="documentos">
+          <span class="nav-icon">📁</span>
+          <span class="nav-label">Documentos</span>
+        </button>
+      </div>
 
-  <!-- ── DOCUMENTOS ── -->
-  <section id="tab-documentos" class="section">
-    <div class="row">
-      <select id="docs-filtro-topic"><option value="">Todos los temas</option></select>
-      <button class="btn btn-primary" id="btn-subir-archivo">+ Subir documento</button>
-    </div>
-    <div id="docs-lista" style="display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem;"></div>
-  </section>
+      <div class="nav-section">
+        <span class="nav-section-label">Planificación</span>
+        <button class="nav-item" data-tab="plan">
+          <span class="nav-icon">🗺️</span>
+          <span class="nav-label">Plan semanal</span>
+        </button>
+        <button class="nav-item" data-tab="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Dashboard</span>
+        </button>
+      </div>
 
-  <!-- ── PLAN ── -->
-  <section id="tab-plan" class="section">
-    <div class="row">
-      <h2 style="flex:1">Plan de estudio semanal</h2>
-      <button class="btn btn-primary" id="btn-generar-plan">Generar plan con Shaula</button>
-    </div>
-    <p id="plan-fecha" style="color:var(--text-muted); font-size:.85rem; margin:.25rem 0 1rem;"></p>
-    <div id="plan-contenido" class="card" style="min-height:120px; line-height:1.7;">
-      <p style="color:var(--text-muted)">Presioná "Generar plan" y Shaula analizará tus temas, flashcards pendientes y documentos para armar tu semana.</p>
-    </div>
-  </section>
+    </nav>
 
-  <!-- ── DASHBOARD ── -->
-  <section id="tab-dashboard" class="section">
-    <h2>Resumen de hoy</h2>
-    <div class="stats-grid" id="dash-stats"></div>
-    <h2>Progreso por tema</h2>
-    <div id="dash-topics" style="display:flex; flex-direction:column; gap:.75rem;"></div>
-  </section>
+  </aside>
 
-</main>
+  <!-- ══════════════════════════════════
+       CONTENIDO PRINCIPAL
+  ══════════════════════════════════ -->
+  <div class="app-main">
+    <main>
 
-<!-- ── MODAL SESIONES ── -->
+      <!-- ── CHAT ── -->
+      <section id="tab-chat" class="section active">
+        <div id="chat-sesion-bar">
+          <span id="chat-sesion-titulo" class="sesion-titulo">Nueva sesión</span>
+          <div class="row" style="gap:.4rem; flex-shrink:0">
+            <button class="btn btn-secondary btn-sm" onclick="abrirSesiones()">📋 Sesiones</button>
+            <button class="btn btn-secondary btn-sm" onclick="nuevaSesionChat()">+ Nueva</button>
+          </div>
+        </div>
+        <div id="chat-messages">
+          <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
+        </div>
+        <form id="chat-form">
+          <select id="chat-topic" style="max-width:160px"></select>
+          <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off">
+          <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+      </section>
+
+      <!-- ── TEMAS ── -->
+      <section id="tab-temas" class="section">
+        <div class="row">
+          <h2 style="flex:1">Mis temas de estudio</h2>
+          <button class="btn btn-primary" id="btn-nuevo-tema">+ Nuevo curso</button>
+        </div>
+        <div id="temas-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
+      </section>
+
+      <!-- ── NOTAS ── -->
+      <section id="tab-notas" class="section">
+        <div class="row">
+          <input id="notas-busqueda" type="text" placeholder="Buscar notas…">
+          <select id="notas-filtro-topic"><option value="">Todos los temas</option></select>
+          <button class="btn btn-primary" id="btn-nueva-nota">+ Nueva nota</button>
+        </div>
+        <div id="notas-lista"></div>
+      </section>
+
+      <!-- ── FLASHCARDS ── -->
+      <section id="tab-flashcards" class="section">
+        <div class="row">
+          <select id="fc-filtro-topic"><option value="">Todos los temas</option></select>
+          <button class="btn btn-primary" id="btn-nueva-card">+ Nueva card</button>
+          <button class="btn btn-secondary" id="btn-modo-repaso">Repasar pendientes</button>
+        </div>
+        <div id="fc-repaso" style="display:none; flex-direction:column; gap:1rem; align-items:center;">
+          <p id="fc-repaso-contador" style="color:var(--text-muted); font-size:.9rem;"></p>
+          <div class="flashcard-flip card" id="fc-flip" style="width:100%; max-width:560px;" onclick="fcFlip()">
+            <div class="flashcard-inner">
+              <div class="flashcard-front" id="fc-pregunta"></div>
+              <div class="flashcard-back"  id="fc-respuesta"></div>
+            </div>
+          </div>
+          <div class="rating-row" id="fc-rating-row" style="display:none; width:100%; max-width:560px;">
+            <button class="btn btn-danger btn-sm"    onclick="fcCalificar(0)">0 – Nada</button>
+            <button class="btn btn-secondary btn-sm" onclick="fcCalificar(2)">2 – Difícil</button>
+            <button class="btn btn-secondary btn-sm" onclick="fcCalificar(3)">3 – Bien</button>
+            <button class="btn btn-primary btn-sm"   onclick="fcCalificar(4)">4 – Fácil</button>
+            <button class="btn btn-primary btn-sm"   onclick="fcCalificar(5)">5 – Perfecto</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="fcSalirRepaso()">Salir del repaso</button>
+        </div>
+        <div id="fc-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
+      </section>
+
+      <!-- ── DOCUMENTOS ── -->
+      <section id="tab-documentos" class="section">
+        <div class="row">
+          <select id="docs-filtro-topic"><option value="">Todos los temas</option></select>
+          <button class="btn btn-primary" id="btn-subir-archivo">+ Subir documento</button>
+        </div>
+        <div id="docs-lista" style="display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem;"></div>
+      </section>
+
+      <!-- ── PLAN ── -->
+      <section id="tab-plan" class="section">
+        <div class="row">
+          <h2 style="flex:1">Plan de estudio semanal</h2>
+          <button class="btn btn-primary" id="btn-generar-plan">Generar plan con Shaula</button>
+        </div>
+        <p id="plan-fecha" style="color:var(--text-muted); font-size:.85rem; margin:.25rem 0 0;"></p>
+        <div id="plan-contenido" class="card" style="min-height:120px;">
+          <p style="color:var(--text-muted)">Presioná "Generar plan" y Shaula analizará tus temas, flashcards pendientes y documentos para armar tu semana.</p>
+        </div>
+      </section>
+
+      <!-- ── DASHBOARD ── -->
+      <section id="tab-dashboard" class="section">
+        <h2>Resumen de hoy</h2>
+        <div class="stats-grid" id="dash-stats"></div>
+        <h2>Progreso por tema</h2>
+        <div id="dash-topics" style="display:flex; flex-direction:column; gap:.75rem;"></div>
+      </section>
+
+    </main>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════
+     MODALES
+══════════════════════════════════ -->
+
+<!-- Modal sesiones -->
 <div class="modal-overlay" id="modal-sesiones">
   <div class="modal">
     <h2>Sesiones anteriores</h2>
@@ -135,7 +195,7 @@
   </div>
 </div>
 
-<!-- ── MODAL TEMA ── -->
+<!-- Modal tema -->
 <div class="modal-overlay" id="modal-tema">
   <div class="modal">
     <h2 id="modal-tema-titulo">Nuevo tema</h2>
@@ -159,7 +219,7 @@
   </div>
 </div>
 
-<!-- ── MODAL NOTA ── -->
+<!-- Modal nota -->
 <div class="modal-overlay" id="modal-nota">
   <div class="modal">
     <h2 id="modal-nota-titulo">Nueva nota</h2>
@@ -186,7 +246,7 @@
   </div>
 </div>
 
-<!-- ── MODAL FLASHCARD ── -->
+<!-- Modal flashcard -->
 <div class="modal-overlay" id="modal-card">
   <div class="modal">
     <h2 id="modal-card-titulo">Nueva flashcard</h2>
@@ -209,7 +269,7 @@
   </div>
 </div>
 
-<!-- ── MODAL SUBIR DOCUMENTO ── -->
+<!-- Modal subir documento -->
 <div class="modal-overlay" id="modal-doc">
   <div class="modal">
     <h2>Subir documento</h2>
@@ -236,11 +296,11 @@
   </div>
 </div>
 
-<!-- ── MODAL VER TEXTO DOCUMENTO ── -->
+<!-- Modal ver texto documento -->
 <div class="modal-overlay" id="modal-doc-texto">
   <div class="modal" style="max-width:720px;">
     <h2 id="mdt-titulo"></h2>
-    <pre id="mdt-contenido" style="white-space:pre-wrap; max-height:60dvh; overflow-y:auto; font-size:.85rem; background:var(--surface); padding:.75rem; border-radius:.5rem;"></pre>
+    <pre id="mdt-contenido" style="white-space:pre-wrap; max-height:60dvh; overflow-y:auto; font-size:.85rem; background:var(--surface2); padding:.75rem; border-radius:.5rem;"></pre>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarModalDocTexto()">Cerrar</button>
     </div>
@@ -250,9 +310,7 @@
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
-<script>
-  marked.setOptions({ breaks: true, gfm: true });
-</script>
+<script>marked.setOptions({ breaks: true, gfm: true });</script>
 <script src="/static/js/app.js"></script>
 <script src="/static/js/chat.js"></script>
 <script src="/static/js/temas.js"></script>
