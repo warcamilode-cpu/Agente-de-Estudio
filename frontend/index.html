@@ -55,7 +55,7 @@
         <span class="nav-section-label">Planificación</span>
         <button class="nav-item" data-tab="plan">
           <span class="nav-icon">🗺️</span>
-          <span class="nav-label">Plan semanal</span>
+          <span class="nav-label">Planificador</span>
         </button>
         <button class="nav-item" data-tab="dashboard">
           <span class="nav-icon">📊</span>
@@ -162,16 +162,70 @@
         </div>
       </section>
 
-      <!-- ── PLAN ── -->
+      <!-- ── PLANIFICADOR ── -->
       <section id="tab-plan" class="section">
-        <div class="row">
-          <h2 style="flex:1">Plan de estudio semanal</h2>
-          <button class="btn btn-primary" id="btn-generar-plan">Generar plan con Shaula</button>
+
+        <!-- Encabezado -->
+        <div class="row" style="margin-bottom:.9rem;">
+          <h2 style="flex:1">Planificador</h2>
+          <button class="btn btn-secondary btn-sm" onclick="verHistorialPlanes()">📋 Historial</button>
         </div>
-        <p id="plan-fecha" style="color:var(--text-muted); font-size:.85rem; margin:.25rem 0 0;"></p>
-        <div id="plan-contenido" class="card" style="min-height:120px;">
-          <p style="color:var(--text-muted)">Presioná "Generar plan" y Shaula analizará tus temas, flashcards pendientes y documentos para armar tu semana.</p>
+
+        <!-- Formulario de nuevo plan -->
+        <div id="plan-form-area" class="card" style="margin-bottom:1rem;">
+          <div style="margin-bottom:.65rem;">
+            <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Materia (opcional)</label>
+            <select id="plan-materia-sel" style="width:100%; margin-top:.3rem;"><option value="">— Sin filtro —</option></select>
+          </div>
+          <div style="margin-bottom:.75rem;">
+            <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">¿Qué tema querés estudiar?</label>
+            <textarea id="plan-tema-input" rows="3"
+              placeholder="Ej: Acción de tutela — requisitos y procedencia&#10;Ej: Funciones en Python — closures y decoradores"
+              style="width:100%; margin-top:.3rem; resize:vertical;"></textarea>
+          </div>
+          <button class="btn btn-primary" id="btn-generar-plan">Generar plan completo</button>
         </div>
+
+        <!-- Plan generado (todos los módulos juntos) + Q&A -->
+        <div id="plan-resultado" style="display:none;">
+          <p id="plan-fecha" style="color:var(--text-muted); font-size:.82rem; margin-bottom:.6rem;"></p>
+
+          <!-- Plan completo -->
+          <div id="plan-contenido" class="card"
+               style="font-size:.9rem; line-height:1.8; margin-bottom:1rem;"></div>
+
+          <!-- Botón evaluación -->
+          <div style="margin-bottom:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="activarEvaluador()">🎯 Evaluar mi comprensión</button>
+            <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()">+ Nuevo plan</button>
+          </div>
+
+          <!-- Chat Q&A con el Planificador -->
+          <div class="card" id="plan-chat-area">
+            <h3 style="font-size:.78rem; font-weight:700; text-transform:uppercase;
+                       letter-spacing:.07em; color:var(--accent); margin-bottom:.65rem;">
+              Preguntale al Planificador sobre este tema
+            </h3>
+            <div id="plan-chat-messages"
+                 style="display:flex; flex-direction:column; gap:.5rem;
+                        max-height:340px; overflow-y:auto; margin-bottom:.65rem;"></div>
+            <form id="plan-chat-form" style="display:flex; gap:.5rem;">
+              <input id="plan-chat-input" type="text"
+                     placeholder="¿Tenés dudas sobre algún paso del plan?" style="flex:1;">
+              <button type="submit" class="btn btn-primary btn-sm">Preguntar</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Historial de planes -->
+        <div id="plan-historial-area" style="display:none;">
+          <div class="row" style="margin-bottom:.6rem;">
+            <h3 style="flex:1; font-size:.9rem;">Planes guardados</h3>
+            <button class="btn btn-secondary btn-sm" onclick="ocultarHistorial()">✕ Cerrar</button>
+          </div>
+          <div id="plan-historial-lista" style="display:flex; flex-direction:column; gap:.35rem;"></div>
+        </div>
+
       </section>
 
       <!-- ── DASHBOARD ── -->

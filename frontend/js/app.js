@@ -85,7 +85,7 @@ async function cargarEstructura() {
 }
 
 function _poblarSelects() {
-  const filtroIds = ["chat-materia", "fc-filtro-materia", "docs-filtro-materia"];
+  const filtroIds = ["chat-materia", "fc-filtro-materia", "docs-filtro-materia", "plan-materia-sel"];
   const modalIds  = ["mc-materia", "docs-materia"];
 
   filtroIds.forEach(id => {

@@ -1,138 +1,182 @@
 import json
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from database.connection import db
-from services import llm_client
+from services import llm_client, context_builder
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
 
-def _recopilar_contexto() -> str:
+# ── Prompts de los agentes ────────────────────────────────────────
+
+_SYSTEM_PLANIFICADOR = """Eres Shaula, tutora de estudio personal especializada en derecho colombiano y programación Python.
+Tu tarea es generar un plan de estudio estructurado y completo para el tema indicado.
+
+El plan DEBE contener exactamente estos 4 módulos, en este orden:
+
+## Módulo 1 — Concepto
+Explica qué es el tema, para qué sirve y cuándo aplica. Máximo 3-4 párrafos. Sin código ni implementación todavía.
+Para derecho: definición, fundamento normativo (artículo o jurisprudencia clave) y cuándo aplica.
+Para programación: qué problema resuelve y cuándo se usa.
+
+## Módulo 2 — Estructura y Sintaxis
+Muestra la forma mínima con un ejemplo concreto y comentado.
+Para programación: el fragmento de código más simple que ilustre el concepto.
+Para derecho: la estructura de un escrito, los requisitos de una figura jurídica o el esquema de un proceso.
+
+## Módulo 3 — Verificación ✓
+Planteá exactamente 3 preguntas de comprensión numeradas (1. 2. 3.).
+Las preguntas deben cubrir: concepto, aplicación y un caso concreto.
+El estudiante debe responderlas para demostrar que entendió antes de avanzar.
+
+## Módulo 4 — Práctica 💪
+Un ejercicio concreto que el estudiante pueda resolver directamente en el chat.
+Describí claramente qué debe hacer y qué se espera de la respuesta.
+
+---
+IMPORTANTE: Incluí TODOS los módulos completos en una sola respuesta. No esperes feedback entre módulos.
+Respondé en español colombiano, de forma clara y cercana."""
+
+_SYSTEM_CHAT_PLAN = """Eres Shaula, tutora de estudio personal. Estás acompañando al estudiante en su plan de estudio.
+
+El plan que está trabajando es:
+{plan_texto}
+
+Tu rol en este chat:
+1. Responder dudas sobre cualquier módulo del plan.
+2. Si el estudiante comparte sus respuestas al Módulo 3 (Verificación), evaluarlas y dar retroalimentación detallada.
+3. Guiar el Módulo 4 (Práctica) si el estudiante intenta el ejercicio — no des la solución, guiá con pistas.
+4. No revelar respuestas correctas si el estudiante no ha intentado primero.
+
+Respondé en español colombiano, de forma clara y cercana."""
+
+_SYSTEM_EVALUADOR = """Eres el agente Evaluador de Shaula. Tu función es evaluar si el estudiante domina el tema estudiado.
+
+El plan que trabajó es:
+{plan_texto}
+
+Proceso de evaluación (seguí este orden):
+1. Presentate brevemente como el agente Evaluador.
+2. Formulá 4 preguntas de evaluación variadas:
+   - 1 pregunta conceptual (¿qué es X?)
+   - 1 pregunta de aplicación (¿cuándo/cómo se usa X?)
+   - 1 caso práctico (describí una situación y preguntá qué haría el estudiante)
+   - 1 pregunta de síntesis (¿cuál es la diferencia entre X e Y?)
+3. Esperá las respuestas del estudiante.
+4. Evaluá cada respuesta con: ✅ Correcto / ⚠️ Parcial / ❌ Incorrecto + explicación breve.
+5. Emití un diagnóstico final: **Dominado** / **En progreso** / **Necesita repaso**.
+6. Si es "En progreso" o "Necesita repaso", indicá exactamente qué repasar.
+
+Sé justo pero exigente. Respondé en español colombiano."""
+
+
+# ── Modelos ───────────────────────────────────────────────────────
+
+class PlanIn(BaseModel):
+    tema: str
+    materia_id: int | None = None
+
+class PlanChatIn(BaseModel):
+    plan_id: int
+    mensaje: str
+    historial: list[dict] = []
+    modo: str = "chat"  # "chat" | "evaluador"
+
+
+# ── Helpers ───────────────────────────────────────────────────────
+
+def _contexto_cuaderno(tema: str, materia_id: int | None) -> str:
+    contexto, _ = context_builder.construir_contexto(tema, materia_id)
+    if not contexto:
+        return ""
+    return f"\n\nContexto del cuaderno del estudiante (usalo para personalizar el plan):\n{contexto}"
+
+
+# ── Endpoints del Planificador ────────────────────────────────────
+
+@router.post("/planificador")
+def generar_plan_topico(body: PlanIn):
+    """Genera un plan completo de 4 módulos y lo guarda en DB.
+    Llama a Claude de forma síncrona — todos los módulos aparecen juntos al terminar."""
+    if not body.tema.strip():
+        raise HTTPException(status_code=422, detail="El campo 'tema' es obligatorio.")
+
+    contexto_extra = _contexto_cuaderno(body.tema, body.materia_id)
+    prompt_usuario = (
+        f"Quiero estudiar el siguiente tema: **{body.tema}**"
+        + contexto_extra
+        + "\n\nGenerá el plan completo con los 4 módulos tal como se definió."
+    )
+
+    plan_texto = llm_client.preguntar(
+        _SYSTEM_PLANIFICADOR,
+        [{"role": "user", "content": prompt_usuario}],
+    )
+
     with db() as conn:
-        materias = conn.execute(
-            """SELECT m.id, m.nombre, m.emoji,
-                      s.nombre AS semestre_nombre,
-                      COALESCE(p.nombre, 'Sin programa') AS prog_nombre
-               FROM materias m
-               JOIN semestres s ON s.id = m.semestre_id
-               LEFT JOIN programas p ON p.id = s.programa_id
-               ORDER BY p.nombre, s.nombre, m.nombre"""
+        cur = conn.execute(
+            "INSERT INTO planes_estudio (materia_id, tema, plan_texto) VALUES (?,?,?)",
+            (body.materia_id, body.tema, plan_texto),
+        )
+        plan_id = cur.lastrowid
+
+    return {"id": plan_id, "tema": body.tema, "plan_texto": plan_texto}
+
+
+@router.get("/planificador/planes")
+def listar_planes():
+    with db() as conn:
+        rows = conn.execute(
+            """SELECT p.id, p.tema, p.creado_at,
+                      COALESCE(m.nombre, '—') AS materia_nombre
+               FROM planes_estudio p
+               LEFT JOIN materias m ON m.id = p.materia_id
+               ORDER BY p.creado_at DESC LIMIT 20"""
         ).fetchall()
-
-        cards_por_materia = conn.execute(
-            """SELECT m.nombre AS mat_nombre,
-                      COUNT(*) AS total,
-                      SUM(CASE WHEN f.proximo_repaso <= date('now') THEN 1 ELSE 0 END) AS pendientes,
-                      AVG(f.factor_facilidad) AS ef_prom,
-                      AVG(f.repeticiones) AS rep_prom
-               FROM flashcards f
-               JOIN materias m ON m.id = f.materia_id
-               GROUP BY f.materia_id""",
-        ).fetchall()
-
-        docs_recientes = conn.execute(
-            """SELECT d.titulo, d.tipo, d.tags,
-                      COALESCE(m.nombre, 'Sin materia') AS mat_nombre
-               FROM documentos d
-               LEFT JOIN materias m ON m.id = d.materia_id
-               ORDER BY d.creado_at DESC LIMIT 8"""
-        ).fetchall()
-
-        total_cards = conn.execute("SELECT COUNT(*) AS n FROM flashcards").fetchone()["n"]
-        total_docs  = conn.execute("SELECT COUNT(*) AS n FROM documentos").fetchone()["n"]
-        total_clases = conn.execute("SELECT COUNT(*) AS n FROM clases").fetchone()["n"]
-
-    lineas = [
-        f"- Clases en el cuaderno: {total_clases}",
-        f"- Flashcards totales: {total_cards}",
-        f"- Documentos subidos: {total_docs}",
-        "",
-        "**Materias activas:**",
-    ]
-    for m in materias:
-        lineas.append(f"  - {m['emoji']} {m['nombre']} ({m['prog_nombre']} › {m['semestre_nombre']})")
-
-    if cards_por_materia:
-        lineas.append("\n**Estadísticas de flashcards por materia:**")
-        for c in cards_por_materia:
-            ef = round(c["ef_prom"] or 2.5, 2)
-            rep = round(c["rep_prom"] or 0, 1)
-            pend = c["pendientes"] or 0
-            lineas.append(
-                f"  - {c['mat_nombre']}: {c['total']} cards, {pend} pendientes hoy, "
-                f"EF promedio={ef} (>2.5=fácil, <2.0=difícil), repeticiones prom={rep}"
-            )
-
-    if docs_recientes:
-        lineas.append("\n**Documentos y lecturas recientes:**")
-        for d in docs_recientes:
-            tags = f" [{d['tags']}]" if d["tags"] else ""
-            lineas.append(f"  - {d['titulo']} ({d['tipo'].upper()}){tags} — {d['mat_nombre']}")
-
-    return "\n".join(lineas)
+    return [dict(r) for r in rows]
 
 
-def _evaluar_dominio(contexto: str) -> str:
-    system_eval = """Eres el agente Evaluador de Shaula, tutora de estudio personal.
-Tu única tarea es analizar las estadísticas de estudio del estudiante y emitir un diagnóstico breve de dominio por materia.
+@router.get("/planificador/planes/{plan_id}")
+def obtener_plan(plan_id: int):
+    with db() as conn:
+        row = conn.execute(
+            """SELECT p.*, COALESCE(m.nombre, '—') AS materia_nombre
+               FROM planes_estudio p
+               LEFT JOIN materias m ON m.id = p.materia_id
+               WHERE p.id = ?""",
+            (plan_id,),
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
+    return dict(row)
 
-Para cada materia con flashcards, evalúa:
-1. **Nivel de dominio** (Inicial / En progreso / Dominado) — basado en EF promedio y repeticiones.
-   - EF < 2.0 o rep < 2 → Inicial
-   - EF 2.0-2.5 o rep 2-4 → En progreso
-   - EF > 2.5 y rep ≥ 5 → Dominado
-2. **Urgencia de repaso** — cuántas cards están pendientes hoy.
-3. **Recomendación puntual** — una línea: qué hacer con esa materia esta semana.
 
-Formato: tabla Markdown con columnas Materia | Dominio | Pendientes hoy | Recomendación.
-Luego un párrafo corto con el diagnóstico general (2-3 líneas máximo). Sin saludos ni relleno."""
+@router.post("/planificador/chat/stream")
+def chat_planificador(body: PlanChatIn):
+    """Chat conversacional sobre el plan activo (Q&A normal o modo Evaluador)."""
+    with db() as conn:
+        row = conn.execute(
+            "SELECT tema, plan_texto FROM planes_estudio WHERE id = ?",
+            (body.plan_id,),
+        ).fetchone()
 
-    resp = llm_client.preguntar(
-        system_eval,
-        [{"role": "user", "content": f"Aquí están los datos del estudiante:\n\n{contexto}"}],
+    if row is None:
+        def _not_found():
+            yield f'data: {json.dumps("Plan no encontrado.")}\n\n'
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(_not_found(), media_type="text/event-stream")
+
+    system = (
+        _SYSTEM_EVALUADOR.format(plan_texto=row["plan_texto"])
+        if body.modo == "evaluador"
+        else _SYSTEM_CHAT_PLAN.format(plan_texto=row["plan_texto"])
     )
-    return resp
 
-
-SYSTEM_PLAN = """Eres el agente Planificador de Shaula, tutora de estudio personal.
-Recibís un diagnóstico de dominio del agente Evaluador y el inventario de materiales del estudiante.
-Tu tarea es crear un plan de estudio para los próximos 7 días.
-
-Reglas:
-- Priorizá las materias con más cards pendientes y dominio bajo.
-- Bloques de 30-60 min por materia por día. Máximo 2 horas totales/día.
-- Incluí días de descanso real (sin estudio o solo repaso ligero de 15 min).
-- Para cada bloque indicá: materia, tipo de actividad (repaso de cards, lectura, apuntes Cornell, ejercicio práctico) y objetivo concreto.
-- Si hay documentos recientes, incluilos en el plan de lectura.
-- Formato: Markdown por día (### Lunes 19 may, etc.) con tabla de bloques por día.
-- Sé específico y realista. No prometas más de lo que un estudiante promedio puede cumplir."""
-
-
-@router.post("/generar")
-def generar_plan():
-    # Ambas llamadas síncronas a la API corren aquí, en el threadpool de FastAPI,
-    # NO dentro del generador SSE (que corre en el event loop y no puede bloquearse).
-    contexto = _recopilar_contexto()
-
-    try:
-        evaluacion = _evaluar_dominio(contexto)
-    except Exception as e:
-        evaluacion = f"_(No se pudo evaluar el dominio: {e})_"
-
-    mensaje_plan = (
-        f"Diagnóstico de dominio del agente Evaluador:\n\n{evaluacion}\n\n"
-        f"---\n\nInventario completo del estudiante:\n\n{contexto}\n\n"
-        "Con base en este diagnóstico, generá el plan de estudio para los próximos 7 días."
-    )
+    historial = list(body.historial) + [{"role": "user", "content": body.mensaje}]
 
     def _generar():
-        # Envía la evaluación ya calculada
-        yield f'data: {json.dumps({"type": "eval", "contenido": evaluacion})}\n\n'
-        # Transmite el plan en streaming
-        for chunk in llm_client.preguntar_stream(
-            SYSTEM_PLAN,
-            [{"role": "user", "content": mensaje_plan}],
-        ):
+        for chunk in llm_client.preguntar_stream(system, historial):
             yield f"data: {json.dumps(chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
