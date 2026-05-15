@@ -1585,27 +1585,61 @@ label {
 .dias-semana-sel input { display: none; }
 
 /* ── Sprites de agentes ── */
+.agentes-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  min-height: 88px;
+  max-height: 340px;
+  height: 140px;
+  overflow: hidden;
+  position: relative;
+}
+
+.agentes-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  cursor: ns-resize;
+  background: transparent;
+  z-index: 2;
+  transition: background .15s;
+}
+.agentes-resize-handle:hover { background: var(--accent); opacity: .5; }
+
+.agentes-header {
+  display: flex;
+  align-items: center;
+  padding: .3rem .7rem .1rem;
+  flex-shrink: 0;
+}
+.agentes-titulo {
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.sidebar.collapsed .agentes-titulo { display: none; }
+
 .agentes-sprites {
   display: flex;
   flex-direction: row;
   align-items: flex-end;
   justify-content: space-around;
   gap: 2px;
-  padding: .4rem .3rem .3rem;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
-  background: var(--surface);
+  padding: .2rem .3rem .4rem;
+  flex: 1;
   overflow: hidden;
 }
 .sidebar.collapsed .agentes-sprites {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  height: auto;
-  max-height: 200px;
   padding: .3rem .2rem;
 }
 .sidebar.collapsed .sprite-label { display: none; }

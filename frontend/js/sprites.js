@@ -155,9 +155,56 @@
     document.addEventListener("touchend",  onUp);
   }
 
+  // ── Resize del panel ────────────────────────────────────────────
+  function iniciarResize() {
+    const handle = document.getElementById("agentes-resize-handle");
+    const panel  = document.getElementById("agentes-panel");
+    if (!handle || !panel) return;
+
+    const MIN_H = 88;
+    const MAX_H = 340;
+
+    handle.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const startY    = e.clientY;
+      const startH    = panel.getBoundingClientRect().height;
+
+      function onMove(ev) {
+        const delta = startY - ev.clientY;
+        const newH  = Math.min(MAX_H, Math.max(MIN_H, startH + delta));
+        panel.style.height = newH + "px";
+      }
+      function onUp() {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup",   onUp);
+      }
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup",   onUp);
+    });
+
+    handle.addEventListener("touchstart", e => {
+      e.preventDefault();
+      const startY = e.touches[0].clientY;
+      const startH = panel.getBoundingClientRect().height;
+
+      function onMove(ev) {
+        const delta = startY - ev.touches[0].clientY;
+        const newH  = Math.min(MAX_H, Math.max(MIN_H, startH + delta));
+        panel.style.height = newH + "px";
+      }
+      function onUp() {
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend",  onUp);
+      }
+      document.addEventListener("touchmove", onMove, { passive: false });
+      document.addEventListener("touchend",  onUp);
+    }, { passive: false });
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", iniciarSprites);
+    document.addEventListener("DOMContentLoaded", () => { iniciarSprites(); iniciarResize(); });
   } else {
     iniciarSprites();
+    iniciarResize();
   }
 })();
