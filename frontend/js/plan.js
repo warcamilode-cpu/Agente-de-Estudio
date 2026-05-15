@@ -25,11 +25,10 @@ async function generarPlan() {
   // Ocultar historial si estaba visible
   ocultarHistorial();
 
-  // Mostrar estado de carga
-  document.getElementById("plan-resultado").style.display = "none";
+  // Indicar carga — el form queda visible mientras espera
   const formArea = document.getElementById("plan-form-area");
   formArea.insertAdjacentHTML("afterend",
-    '<p id="plan-loading" style="color:var(--text-muted); font-size:.875rem; margin:.5rem 0;">⏳ Shaula está generando los 4 módulos… (puede tardar ~20 s)</p>'
+    '<p id="plan-loading" style="color:var(--text-muted); font-size:.875rem; margin:.5rem var(--gap);">Alcíone está generando los 4 módulos… (puede tardar ~20 s)</p>'
   );
 
   try {
@@ -46,11 +45,6 @@ async function generarPlan() {
 
     _mostrarPlan(data);
 
-    // Si hay cronograma habilitado, guardarlo
-    if (document.getElementById("plan-sched-toggle")?.checked) {
-      _guardarCronograma(tema);
-    }
-
   } catch (e) {
     toast(`Error al generar el plan: ${e.message}`, 5000);
   } finally {
@@ -62,7 +56,6 @@ async function generarPlan() {
 }
 
 function _mostrarPlan(data) {
-  const resultado = document.getElementById("plan-resultado");
   const contenido = document.getElementById("plan-contenido");
   const fecha     = document.getElementById("plan-fecha");
 
@@ -80,10 +73,16 @@ function _mostrarPlan(data) {
   if (sesEl) sesEl.textContent = "";
   _actualizarIndicadorAgente();
 
-  // Ocultar formulario de generación — el plan ocupa el espacio
+  // Plan tab: ocultar form, mostrar contenido
   document.getElementById("plan-form-area").style.display = "none";
+  document.getElementById("plan-contenido-wrap").style.display = "block";
 
-  resultado.style.display = "flex";
+  // Agentes tab: ocultar mensaje "sin plan", mostrar chat
+  const sinPlan = document.getElementById("plan-sin-plan-msg");
+  const chat    = document.getElementById("plan-agentes-chat");
+  if (sinPlan) sinPlan.style.display = "none";
+  if (chat)    chat.style.display    = "flex";
+
   _planTab("plan");
 }
 
@@ -95,7 +94,7 @@ function _planTab(tab) {
     const btn = document.getElementById(`plan-stab-${t}`);
     if (!el || !btn) return;
     const active = t === tab;
-    el.style.display = active ? (t === "agentes" ? "flex" : "block") : "none";
+    el.style.display = active ? "flex" : "none";
     btn.classList.toggle("active", active);
   });
   if (tab === "calendario") _renderCalendario();
@@ -121,7 +120,7 @@ function _calcularFechas(fechaInicio, totalDias, diasSem) {
 }
 
 function _renderCalendario() {
-  const container = document.getElementById("plan-tab-calendario");
+  const container = document.getElementById("plan-cronogramas-lista") || document.getElementById("plan-tab-calendario");
   if (!container) return;
   const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
   if (!cronos.length) {
@@ -170,14 +169,23 @@ function nuevoPlan() {
   _modoEval       = false;
   _examenIniciado = false;
   _planToksAcum   = 0;
-  document.getElementById("plan-resultado").style.display = "none";
+
+  // Plan tab: mostrar form, ocultar contenido
   document.getElementById("plan-form-area").style.display = "";
+  document.getElementById("plan-contenido-wrap").style.display = "none";
   document.getElementById("plan-tema-input").value = "";
+
+  // Agentes tab: mostrar mensaje "sin plan", ocultar chat
+  const sinPlan = document.getElementById("plan-sin-plan-msg");
+  const chat    = document.getElementById("plan-agentes-chat");
+  if (sinPlan) sinPlan.style.display = "flex";
+  if (chat)    chat.style.display    = "none";
+
+  // Reset token counter
   const sesEl = document.getElementById("plan-tok-session");
   if (sesEl) sesEl.textContent = "";
-  // Resetear cronograma
-  const toggle = document.getElementById("plan-sched-toggle");
-  if (toggle) { toggle.checked = false; toggleCronograma(); }
+
+  _planTab("plan");
   document.getElementById("plan-tema-input").focus();
 }
 
@@ -191,16 +199,16 @@ function _actualizarIndicadorAgente() {
   if (!badge) return;
 
   if (_modoEval) {
-    badge.textContent = "⚡ Agente Electra";
+    badge.innerHTML   = '<i class="fi fi-rr-bolt"></i> Electra';
     badge.className   = "plan-agente-badge plan-agente-eval";
     desc.textContent  = "Evaluadora — verificando tu comprensión del tema";
-    btn.textContent   = "🗺️ Volver a Atlas";
+    btn.innerHTML     = '<i class="fi fi-rr-graduation-cap"></i> Volver a Alcíone';
     input.placeholder = "Respondé las preguntas de Electra…";
   } else {
-    badge.textContent = "🗺️ Agente Atlas";
+    badge.innerHTML   = '<i class="fi fi-rr-graduation-cap"></i> Alcíone';
     badge.className   = "plan-agente-badge plan-agente-plan";
-    desc.textContent  = "Planificador — responde dudas sobre el plan";
-    btn.textContent   = "⚡ Activar Electra";
+    desc.textContent  = "Planificadora — responde dudas sobre el plan";
+    btn.innerHTML     = '<i class="fi fi-rr-bolt"></i> Activar Electra';
     input.placeholder = "¿Tenés dudas sobre algún paso del plan?";
   }
 }
@@ -215,7 +223,7 @@ function toggleEvaluador() {
   aviso.style.cssText = "font-size:.78rem; color:var(--text-muted); text-align:center; padding:.3rem 0;";
   aviso.textContent   = _modoEval
     ? "— Agente Electra (evaluadora) activada —"
-    : "— Volviste al Agente Atlas (planificador) —";
+    : "— Volviste a Alcíone (planificadora) —";
   msgArea.appendChild(aviso);
   msgArea.scrollTop = msgArea.scrollHeight;
 
@@ -355,9 +363,11 @@ function _planBurbuja(msgArea, rol, contenido) {
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
   if (rol === "user") {
-    avatar.textContent = "👤";
+    avatar.innerHTML = '<i class="fi fi-rr-user"></i>';
   } else {
-    avatar.textContent = _modoEval ? "⚡" : "🗺️";
+    avatar.innerHTML = _modoEval
+      ? '<i class="fi fi-rr-bolt"></i>'
+      : '<i class="fi fi-rr-graduation-cap"></i>';
   }
 
   const div = document.createElement("div");
@@ -422,24 +432,8 @@ async function restaurarPlan(planId) {
 
 // ── Cronograma y notificaciones web ──────────────────────────────
 
-function toggleCronograma() {
-  const checked = document.getElementById("plan-sched-toggle")?.checked;
-  const fields  = document.getElementById("plan-sched-fields");
-  if (fields) fields.style.display = checked ? "" : "none";
-  if (checked) _solicitarPermisoNotif();
-}
-
-async function _solicitarPermisoNotif() {
-  if (!("Notification" in window)) {
-    toast("Tu navegador no soporta notificaciones web"); return;
-  }
-  if (Notification.permission === "granted") return;
-  const perm = await Notification.requestPermission();
-  if (perm !== "granted")
-    toast("Habilitá las notificaciones en la configuración del navegador", 4000);
-}
-
 function _guardarCronograma(tema) {
+  const temaInput   = tema || document.getElementById("plan-sched-tema")?.value.trim() || "";
   const dias        = parseInt(document.getElementById("plan-sched-dias")?.value) || 7;
   const fechaInicio = document.getElementById("plan-sched-fecha")?.value || "";
   const horaIni     = document.getElementById("plan-sched-hora-ini")?.value || "08:00";
@@ -447,14 +441,20 @@ function _guardarCronograma(tema) {
   const diasSem     = [...document.querySelectorAll("[name='plan-sched-dia']:checked")]
                        .map(el => parseInt(el.value));
 
+  if (!temaInput) { toast("Escribí el tema del cronograma"); return; }
   if (!diasSem.length) { toast("Seleccioná al menos un día de la semana"); return; }
 
   const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
-  const nuevo  = { id: Date.now(), tema, dias, fechaInicio, horaIni, horaFin, diasSem, creado: new Date().toISOString() };
+  const nuevo  = { id: Date.now(), tema: temaInput, dias, fechaInicio, horaIni, horaFin, diasSem, creado: new Date().toISOString() };
   cronos.push(nuevo);
   localStorage.setItem("atalaya-cronogramas", JSON.stringify(cronos));
   _programarNotifHoy(nuevo);
   toast(`Cronograma guardado: ${dias} sesiones a las ${horaIni}`, 3000);
+  _renderCalendario();
+
+  // Limpiar el campo de tema del calendario
+  const temaEl = document.getElementById("plan-sched-tema");
+  if (temaEl) temaEl.value = "";
 }
 
 function _programarNotifHoy(c) {

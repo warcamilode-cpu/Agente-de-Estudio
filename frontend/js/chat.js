@@ -21,7 +21,7 @@ async function nuevaSesionChat() {
   if (sesEl) sesEl.textContent = "";
   mensajesEl.innerHTML = `
     <div class="msg-row assistant">
-      <div class="msg-avatar">🌟</div>
+      <div class="msg-avatar"><i class="fi fi-rr-star"></i></div>
       <div class="msg assistant shaula-intro">
         Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
         Seleccioná un tema y preguntame lo que necesites.
@@ -188,15 +188,15 @@ function _registrarTokens(textoUsuario, textoAsistente) {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const _AVATARES_CHAT = { user: "👤", assistant: "🌟" };
-
 function _agregarMensaje(rol, contenido) {
   const row = document.createElement("div");
   row.className = `msg-row ${rol}`;
 
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
-  avatar.textContent = _AVATARES_CHAT[rol] || "👤";
+  avatar.innerHTML = rol === "user"
+    ? '<i class="fi fi-rr-user"></i>'
+    : '<i class="fi fi-rr-star"></i>';
 
   const div = document.createElement("div");
   div.className = `msg ${rol}`;

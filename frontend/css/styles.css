@@ -35,7 +35,7 @@
   --radius:      8px;
   --gap:         1rem;
   --sidebar-w:   228px;
-  --sidebar-collapsed: 56px;
+  --sidebar-collapsed: 62px;
 }
 
 body {
@@ -214,14 +214,28 @@ body {
   flex-shrink: 0;
   width: 20px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.nav-icon i { font-size: 1rem; line-height: 1; }
 .nav-label { overflow: hidden; text-overflow: ellipsis; }
+
+/* Iconos fi en avatares de mensajes */
+.msg-avatar i { font-size: .9rem; line-height: 1; }
+
+/* Iconos fi en brand-avatar */
+.brand-avatar i { font-size: 1rem; color: #fff; line-height: 1; }
+
+/* Iconos fi en botones */
+.btn i { vertical-align: middle; font-size: .85rem; }
 
 /* Estado colapsado */
 .sidebar.collapsed .nav-section-label { opacity: 0; height: 0; padding: 0; margin: 0; overflow: hidden; }
 .sidebar.collapsed .nav-label         { display: none; }
 .sidebar.collapsed .brand-info        { display: none; }
 .sidebar.collapsed .nav-item          { justify-content: center; padding: .58rem; }
+.sidebar.collapsed .sidebar-toggle   { display: none; }
 .sidebar.collapsed .nav-item::before  { display: none; }
 .sidebar.collapsed .brand             { justify-content: center; }
 

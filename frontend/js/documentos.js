@@ -250,7 +250,9 @@ function _maiaMsg(msgArea, rol, contenido) {
 
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
-  avatar.textContent = rol === "user" ? "👤" : "🔬";
+  avatar.innerHTML = rol === "user"
+    ? '<i class="fi fi-rr-user"></i>'
+    : '<i class="fi fi-rr-search"></i>';
 
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
