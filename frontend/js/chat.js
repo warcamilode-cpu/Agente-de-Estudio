@@ -21,7 +21,7 @@ async function nuevaSesionChat() {
   if (sesEl) sesEl.textContent = "";
   mensajesEl.innerHTML = `
     <div class="msg-row assistant">
-      <div class="msg-avatar"><i class="fi fi-rr-star"></i></div>
+      <div class="msg-avatar">${_avatarImg("shaula", "fi-rr-star")}</div>
       <div class="msg assistant shaula-intro">
         Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
         Seleccioná un tema y preguntame lo que necesites.
@@ -195,8 +195,8 @@ function _agregarMensaje(rol, contenido) {
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
   avatar.innerHTML = rol === "user"
-    ? '<i class="fi fi-rr-user"></i>'
-    : '<i class="fi fi-rr-star"></i>';
+    ? _avatarImg("aldebaran", "fi-rr-user")
+    : _avatarImg("shaula", "fi-rr-star");
 
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
@@ -215,6 +215,11 @@ function _agregarMensaje(rol, contenido) {
 
 function _escaparHTML(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Retorna HTML de avatar con imagen + fallback a ícono fi si la imagen no existe
+function _avatarImg(nombre, icon) {
+  return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
 }
 
 function _esc(str) {

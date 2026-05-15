@@ -367,11 +367,11 @@ function _planBurbuja(msgArea, rol, contenido) {
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
   if (rol === "user") {
-    avatar.innerHTML = '<i class="fi fi-rr-user"></i>';
+    avatar.innerHTML = _avatarImg("aldebaran", "fi-rr-user");
   } else {
     avatar.innerHTML = _modoEval
-      ? '<i class="fi fi-rr-bolt"></i>'
-      : '<i class="fi fi-rr-graduation-cap"></i>';
+      ? _avatarImg("electra", "fi-rr-bolt")
+      : _avatarImg("atlas", "fi-rr-graduation-cap");
   }
 
   const div = document.createElement("div");
@@ -487,4 +487,8 @@ function _iniciarNotificaciones() {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
   cronos.forEach(_programarNotifHoy);
+}
+
+function _avatarImg(nombre, icon) {
+  return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
 }

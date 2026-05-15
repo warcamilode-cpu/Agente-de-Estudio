@@ -83,7 +83,7 @@
         </div>
         <div id="chat-messages">
           <div class="msg-row assistant">
-            <div class="msg-avatar"><i class="fi fi-rr-star"></i></div>
+            <div class="msg-avatar"><img src="/static/img/shaula.png" class="msg-avatar-img" alt="shaula" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi fi-rr-star" style="display:none;"></i></div>
             <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
           </div>
         </div>
@@ -178,9 +178,12 @@
         <!-- Panel Maia (análisis) -->
         <div id="docs-tab-maia" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
           <div id="maia-messages">
-            <div class="msg assistant maia-intro">
-              Hola, soy <strong>Maia</strong>, agente de análisis de Atalaya Pléyades.<br>
-              Seleccioná un documento y preguntame sobre su contenido. Puedo resumir, comparar, extraer ideas clave y más.
+            <div class="msg-row assistant">
+              <div class="msg-avatar"><img src="/static/img/maia.png" class="msg-avatar-img" alt="maia" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi fi-rr-search" style="display:none;"></i></div>
+              <div class="msg assistant maia-intro">
+                Hola, soy <strong>Maia</strong>, agente de análisis de Atalaya Pléyades.<br>
+                Seleccioná un documento y preguntame sobre su contenido. Puedo resumir, comparar, extraer ideas clave y más.
+              </div>
             </div>
           </div>
           <form id="maia-form" style="display:flex; gap:.5rem; padding:var(--gap); padding-top:.5rem; border-top:1px solid var(--border); flex-shrink:0;">

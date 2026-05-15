@@ -258,8 +258,8 @@ function _maiaMsg(msgArea, rol, contenido) {
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
   avatar.innerHTML = rol === "user"
-    ? '<i class="fi fi-rr-user"></i>'
-    : '<i class="fi fi-rr-search"></i>';
+    ? _avatarImg("aldebaran", "fi-rr-user")
+    : _avatarImg("maia", "fi-rr-search");
 
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
@@ -368,4 +368,8 @@ async function _eliminarBiblioteca(id) {
   if (!confirm("¿Eliminar este análisis?")) return;
   await api("DELETE", `/documentos/biblioteca/${id}`);
   _cargarBiblioteca();
+}
+
+function _avatarImg(nombre, icon) {
+  return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
 }
