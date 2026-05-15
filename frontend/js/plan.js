@@ -28,7 +28,7 @@ async function generarPlan() {
   // Indicar carga — el form queda visible mientras espera
   const formArea = document.getElementById("plan-form-area");
   formArea.insertAdjacentHTML("afterend",
-    '<p id="plan-loading" style="color:var(--text-muted); font-size:.875rem; margin:.5rem var(--gap);">Alcíone está generando los 4 módulos… (puede tardar ~20 s)</p>'
+    '<p id="plan-loading" style="color:var(--text-muted); font-size:.875rem; margin:.5rem var(--gap);">Atlas está generando los 4 módulos… (puede tardar ~20 s)</p>'
   );
 
   try {
@@ -206,10 +206,10 @@ function _actualizarIndicadorAgente() {
     badge.innerHTML   = '<i class="fi fi-rr-bolt"></i> Electra';
     badge.className   = "plan-agente-badge plan-agente-eval";
     if (desc)  desc.textContent  = "Evaluadora — verificando tu comprensión del tema";
-    if (btn)   btn.innerHTML     = '<i class="fi fi-rr-graduation-cap"></i> Volver a Alcíone';
+    if (btn)   btn.innerHTML     = '<i class="fi fi-rr-graduation-cap"></i> Volver a Atlas';
     if (input) input.placeholder = "Respondé las preguntas de Electra…";
   } else {
-    badge.innerHTML   = '<i class="fi fi-rr-graduation-cap"></i> Alcíone';
+    badge.innerHTML   = '<i class="fi fi-rr-graduation-cap"></i> Atlas';
     badge.className   = "plan-agente-badge plan-agente-plan";
     if (desc)  desc.textContent  = "Planificadora — responde dudas sobre el plan";
     if (btn)   btn.innerHTML     = '<i class="fi fi-rr-bolt"></i> Activar Electra';
@@ -227,7 +227,7 @@ function toggleEvaluador() {
   aviso.style.cssText = "font-size:.78rem; color:var(--text-muted); text-align:center; padding:.3rem 0;";
   aviso.textContent   = _modoEval
     ? "— Agente Electra (evaluadora) activada —"
-    : "— Volviste a Alcíone (planificadora) —";
+    : "— Volviste a Atlas (planificadora) —";
   msgArea.appendChild(aviso);
   msgArea.scrollTop = msgArea.scrollHeight;
 

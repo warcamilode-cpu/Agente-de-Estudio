@@ -235,7 +235,8 @@ body {
 .sidebar.collapsed .nav-label         { display: none; }
 .sidebar.collapsed .brand-info        { display: none; }
 .sidebar.collapsed .nav-item          { justify-content: center; padding: .58rem; }
-.sidebar.collapsed .sidebar-toggle   { display: none; }
+.sidebar.collapsed .sidebar-header    { flex-direction: column; padding: .55rem .5rem; gap: .3rem; }
+.sidebar.collapsed .sidebar-toggle    { width: 100%; display: flex; align-items: center; justify-content: center; }
 .sidebar.collapsed .nav-item::before  { display: none; }
 .sidebar.collapsed .brand             { justify-content: center; }
 
@@ -1472,11 +1473,17 @@ label {
   font-size: .83em;
   color: var(--accent-h);
 }
-.rte-editor table { border-collapse: collapse; width: 100%; margin: .5em 0; font-size: .84rem; }
+.rte-editor table { border-collapse: collapse; width: 100%; margin: .5em 0; font-size: .84rem; table-layout: fixed; }
 .rte-editor th, .rte-editor td {
   border: 1px solid var(--border);
   padding: .3rem .55rem;
   text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 60px;
+  resize: horizontal;
+  overflow: auto;
 }
 .rte-editor th { background: var(--surface2); font-weight: 700; }
 .rte-editor hr  { border: none; border-top: 1px solid var(--border); margin: .5em 0; }
