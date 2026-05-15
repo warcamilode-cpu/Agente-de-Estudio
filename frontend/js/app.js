@@ -44,6 +44,7 @@ function cambiarTab(nombre) {
   if (nombre === "documentos") cargarDocumentos();
   if (nombre === "dashboard")  cargarDashboard();
 
+  document.dispatchEvent(new CustomEvent("tabchange", { detail: nombre }));
   if (window.innerWidth < 640) _aplicarEstadoSidebar(true);
 }
 
