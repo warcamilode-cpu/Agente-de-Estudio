@@ -43,7 +43,12 @@ async function generarPlan() {
     _examenIniciado = false;
     _planToksAcum   = 0;
 
-    _mostrarPlan(data);
+    try {
+      _mostrarPlan(data);
+    } catch (renderErr) {
+      console.error("Error al renderizar plan:", renderErr);
+      toast("El plan se generó pero no pudo mostrarse. Buscalo en Historial.", 5000);
+    }
 
   } catch (e) {
     toast(`Error al generar el plan: ${e.message}`, 5000);
@@ -56,32 +61,31 @@ async function generarPlan() {
 }
 
 function _mostrarPlan(data) {
-  const contenido = document.getElementById("plan-contenido");
-  const fecha     = document.getElementById("plan-fecha");
+  const contenido     = document.getElementById("plan-contenido");
+  const fecha         = document.getElementById("plan-fecha");
+  const formArea      = document.getElementById("plan-form-area");
+  const contenidoWrap = document.getElementById("plan-contenido-wrap");
+  const chatMsgs      = document.getElementById("plan-chat-messages");
+  const sesEl         = document.getElementById("plan-tok-session");
+  const sinPlan       = document.getElementById("plan-sin-plan-msg");
+  const chat          = document.getElementById("plan-agentes-chat");
 
-  contenido.innerHTML = marked.parse(data.plan_texto);
-  fecha.textContent   = "Generado el " + new Date().toLocaleDateString("es-CO", {
+  if (contenido) contenido.innerHTML = marked.parse(data.plan_texto || "");
+  if (fecha) fecha.textContent = "Generado el " + new Date().toLocaleDateString("es-CO", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   }) + (data.materia_nombre && data.materia_nombre !== "—" ? ` · ${data.materia_nombre}` : "");
 
-  // Limpiar chat Q&A y resetear agente
-  document.getElementById("plan-chat-messages").innerHTML = "";
+  if (chatMsgs) chatMsgs.innerHTML = "";
   _planHistorial = [];
   _modoEval      = false;
   _planToksAcum  = 0;
-  const sesEl = document.getElementById("plan-tok-session");
   if (sesEl) sesEl.textContent = "";
   _actualizarIndicadorAgente();
 
-  // Plan tab: ocultar form, mostrar contenido
-  document.getElementById("plan-form-area").style.display = "none";
-  document.getElementById("plan-contenido-wrap").style.display = "block";
-
-  // Agentes tab: ocultar mensaje "sin plan", mostrar chat
-  const sinPlan = document.getElementById("plan-sin-plan-msg");
-  const chat    = document.getElementById("plan-agentes-chat");
-  if (sinPlan) sinPlan.style.display = "none";
-  if (chat)    chat.style.display    = "flex";
+  if (formArea)      formArea.style.display      = "none";
+  if (contenidoWrap) contenidoWrap.style.display = "block";
+  if (sinPlan)       sinPlan.style.display        = "none";
+  if (chat)          chat.style.display           = "flex";
 
   _planTab("plan");
 }
@@ -201,15 +205,15 @@ function _actualizarIndicadorAgente() {
   if (_modoEval) {
     badge.innerHTML   = '<i class="fi fi-rr-bolt"></i> Electra';
     badge.className   = "plan-agente-badge plan-agente-eval";
-    desc.textContent  = "Evaluadora — verificando tu comprensión del tema";
-    btn.innerHTML     = '<i class="fi fi-rr-graduation-cap"></i> Volver a Alcíone';
-    input.placeholder = "Respondé las preguntas de Electra…";
+    if (desc)  desc.textContent  = "Evaluadora — verificando tu comprensión del tema";
+    if (btn)   btn.innerHTML     = '<i class="fi fi-rr-graduation-cap"></i> Volver a Alcíone';
+    if (input) input.placeholder = "Respondé las preguntas de Electra…";
   } else {
     badge.innerHTML   = '<i class="fi fi-rr-graduation-cap"></i> Alcíone';
     badge.className   = "plan-agente-badge plan-agente-plan";
-    desc.textContent  = "Planificadora — responde dudas sobre el plan";
-    btn.innerHTML     = '<i class="fi fi-rr-bolt"></i> Activar Electra';
-    input.placeholder = "¿Tenés dudas sobre algún paso del plan?";
+    if (desc)  desc.textContent  = "Planificadora — responde dudas sobre el plan";
+    if (btn)   btn.innerHTML     = '<i class="fi fi-rr-bolt"></i> Activar Electra';
+    if (input) input.placeholder = "¿Tenés dudas sobre algún paso del plan?";
   }
 }
 
@@ -411,7 +415,8 @@ async function verHistorialPlanes() {
 }
 
 function ocultarHistorial() {
-  document.getElementById("plan-historial-area").style.display = "none";
+  const area = document.getElementById("plan-historial-area");
+  if (area) area.style.display = "none";
 }
 
 async function restaurarPlan(planId) {
@@ -426,6 +431,11 @@ async function restaurarPlan(planId) {
     _actualizarIndicadorAgente();
     _mostrarPlan(data);
   } catch (e) {
+    // Restaurar visibilidad del formulario si algo falló
+    const formArea      = document.getElementById("plan-form-area");
+    const contenidoWrap = document.getElementById("plan-contenido-wrap");
+    if (formArea)      formArea.style.display      = "";
+    if (contenidoWrap) contenidoWrap.style.display = "none";
     toast(`Error al cargar el plan: ${e.message}`, 4000);
   }
 }
