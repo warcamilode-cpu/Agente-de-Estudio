@@ -1587,21 +1587,34 @@ label {
 /* ── Sprites de agentes ── */
 .agentes-sprites {
   display: flex;
+  flex-direction: row;
   align-items: flex-end;
+  justify-content: space-around;
   gap: 2px;
   padding: .4rem .3rem .3rem;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   background: var(--surface);
   overflow: hidden;
 }
-.sidebar.collapsed .agentes-sprites { flex-direction: column; align-items: center; padding: .3rem .2rem; }
-.sidebar.collapsed .sprite-label    { display: none; }
+.sidebar.collapsed .agentes-sprites {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: auto;
+  max-height: 200px;
+  padding: .3rem .2rem;
+}
+.sidebar.collapsed .sprite-label { display: none; }
 
 .sprite-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: 1px;
   cursor: grab;
   user-select: none;
@@ -1609,7 +1622,9 @@ label {
   border-radius: 6px;
   padding: 2px;
   transition: background .15s;
-  flex: 1;
+  width: 52px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 .sprite-wrap:hover { background: var(--surface2); }
 .sprite-wrap:active { cursor: grabbing; }
@@ -1618,10 +1633,15 @@ label {
 .sprite-img {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  max-width: 40px;
+  max-height: 40px;
   object-fit: contain;
-  image-rendering: pixelated;
+  image-rendering: auto;
   animation: sprite-idle 2.4s ease-in-out infinite;
   pointer-events: none;
+  display: block;
 }
 .sprite-wrap:nth-child(2) .sprite-img { animation-delay: .4s; }
 .sprite-wrap:nth-child(3) .sprite-img { animation-delay: .8s; }
