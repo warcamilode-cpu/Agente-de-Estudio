@@ -152,8 +152,9 @@
 
         <!-- Sub-pestañas -->
         <div class="docs-subtabs-bar">
-          <button class="docs-subtab-btn active" id="docs-stab-repo" onclick="_docsTab('repo')"><i class="fi fi-rr-folder"></i> Repositorio</button>
-          <button class="docs-subtab-btn" id="docs-stab-maia" onclick="_docsTab('maia')"><i class="fi fi-rr-search"></i> Análisis · Maia</button>
+          <button class="docs-subtab-btn active" id="docs-stab-repo"       onclick="_docsTab('repo')"><i class="fi fi-rr-folder"></i> Repositorio</button>
+          <button class="docs-subtab-btn"         id="docs-stab-maia"       onclick="_docsTab('maia')"><i class="fi fi-rr-search"></i> Maia</button>
+          <button class="docs-subtab-btn"         id="docs-stab-biblioteca" onclick="_docsTab('biblioteca')"><i class="fi fi-rr-bookmark"></i> Biblioteca</button>
         </div>
 
         <!-- Panel Repositorio -->
@@ -191,6 +192,16 @@
             <button type="submit" class="btn btn-primary">Preguntar</button>
           </form>
           <div id="maia-tok-session" class="tok-session"></div>
+        </div>
+
+        <!-- Tab: Biblioteca de análisis de Maia -->
+        <div id="docs-tab-biblioteca" style="display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:.65rem var(--gap) .4rem; flex-shrink:0; border-bottom:1px solid var(--border);">
+            <span style="font-size:.82rem; font-weight:600; color:var(--text-muted);">Análisis guardados por Maia</span>
+          </div>
+          <div id="maia-biblioteca-lista" style="flex:1; overflow-y:auto; padding:var(--gap); display:flex; flex-direction:column; gap:.6rem;">
+            <p style="color:var(--text-muted); font-size:.875rem; text-align:center;">Cargando…</p>
+          </div>
         </div>
 
       </section>

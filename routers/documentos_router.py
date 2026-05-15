@@ -38,6 +38,11 @@ def listar_documentos(materia_id: int | None = None):
     return [dict(r) for r in rows]
 
 
+@router.get("/biblioteca")
+def listar_biblioteca_get():
+    return listar_biblioteca()
+
+
 @router.get("/{doc_id}")
 def obtener_documento(doc_id: int):
     with db() as conn:
@@ -145,33 +150,99 @@ Respondé en español colombiano. Si el contexto no tiene suficiente info para r
 """
 
 
+# ---------------------------------------------------------------------------
+# Biblioteca de análisis de Maia
+# ---------------------------------------------------------------------------
+
+class BibliotecaIn(BaseModel):
+    titulo: str
+    pregunta: str
+    respuesta: str
+    doc_id: int | None = None
+    materia_id: int | None = None
+
+
+def listar_biblioteca():
+    with db() as conn:
+        rows = conn.execute(
+            """SELECT ma.*, d.titulo AS doc_titulo
+               FROM maia_analisis ma
+               LEFT JOIN documentos d ON d.id = ma.doc_id
+               ORDER BY ma.creado_at DESC LIMIT 100"""
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@router.post("/biblioteca", status_code=201)
+def guardar_biblioteca(body: BibliotecaIn):
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO maia_analisis (titulo, pregunta, respuesta, doc_id, materia_id) VALUES (?,?,?,?,?)",
+            (body.titulo, body.pregunta, body.respuesta, body.doc_id, body.materia_id),
+        )
+        row = conn.execute("SELECT * FROM maia_analisis WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return dict(row)
+
+
+@router.delete("/biblioteca/{analisis_id}", status_code=204)
+def eliminar_biblioteca(analisis_id: int):
+    with db() as conn:
+        conn.execute("DELETE FROM maia_analisis WHERE id = ?", (analisis_id,))
+
+
+# ---------------------------------------------------------------------------
+# RAG helper — scoring BM25-lite sobre chunks
+# ---------------------------------------------------------------------------
+
+def _score_bm25(texto: str, terminos: list[str]) -> float:
+    if not terminos:
+        return 1.0
+    palabras = texto.lower().split()
+    n = max(len(palabras), 1)
+    k1, b, avg = 1.5, 0.75, 150
+    tl = texto.lower()
+    score = 0.0
+    for t in terminos:
+        tf = tl.count(t)
+        if tf > 0:
+            score += (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * n / avg))
+    return score
+
+
 @router.post("/analisis/stream")
 def analisis_stream(payload: MaiaIn):
-    """Streaming SSE con Maia analizando chunks de documentos."""
+    """Streaming SSE con Maia — BM25 sobre todos los chunks del documento."""
 
-    # --- Recuperar contexto desde documento_chunks ---
+    terminos = [t for t in payload.mensaje.lower().split() if len(t) > 2]
+
     contexto = ""
     with db() as conn:
         if payload.doc_id is not None:
             rows = conn.execute(
-                "SELECT texto FROM documento_chunks WHERE doc_id = ? ORDER BY chunk_idx LIMIT 15",
+                "SELECT texto FROM documento_chunks WHERE doc_id = ? ORDER BY chunk_idx",
                 (payload.doc_id,),
             ).fetchall()
-            contexto = "\n\n".join(r["texto"] for r in rows)
-
         elif payload.materia_id is not None:
             rows = conn.execute(
-                """
-                SELECT dc.texto
-                FROM documento_chunks dc
-                JOIN documentos d ON d.id = dc.doc_id
-                WHERE d.materia_id = ?
-                ORDER BY dc.doc_id, dc.chunk_idx
-                LIMIT 25
-                """,
+                """SELECT dc.texto
+                   FROM documento_chunks dc
+                   JOIN documentos d ON d.id = dc.doc_id
+                   WHERE d.materia_id = ?
+                   ORDER BY dc.doc_id, dc.chunk_idx""",
                 (payload.materia_id,),
             ).fetchall()
-            contexto = "\n\n".join(r["texto"] for r in rows)
+        else:
+            rows = []
+
+        if rows:
+            scored = sorted(
+                rows,
+                key=lambda r: -_score_bm25(r["texto"], terminos),
+            )
+            top = [r["texto"] for r in scored[:60] if _score_bm25(r["texto"], terminos) > 0]
+            if not top:
+                top = [r["texto"] for r in scored[:20]]
+            contexto = "\n\n".join(top)
 
         # Fallback: contenido_texto del propio documento
         if not contexto and payload.doc_id is not None:
@@ -180,7 +251,7 @@ def analisis_stream(payload: MaiaIn):
                 (payload.doc_id,),
             ).fetchone()
             if row and row["contenido_texto"]:
-                contexto = row["contenido_texto"][:4000]
+                contexto = row["contenido_texto"][:8000]
 
     if not contexto:
         contexto = "No se encontró contenido de documentos para analizar."

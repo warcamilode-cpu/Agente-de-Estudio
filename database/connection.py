@@ -182,6 +182,31 @@ def _migraciones(conn: sqlite3.Connection) -> None:
             CREATE INDEX idx_mensajes_session ON mensajes(session_id);
         """)
 
+    # Migración: tabla maia_analisis (Biblioteca de análisis)
+    if "maia_analisis" not in tablas:
+        conn.executescript("""
+            CREATE TABLE maia_analisis (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo     TEXT NOT NULL,
+                pregunta   TEXT NOT NULL,
+                respuesta  TEXT NOT NULL,
+                doc_id     INTEGER REFERENCES documentos(id) ON DELETE SET NULL,
+                materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+                creado_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_maia_analisis_materia ON maia_analisis(materia_id);
+        """)
+
+    # Migración: clase_id en referencias_rapidas (referencias por clase)
+    columnas_ref = {r[1] for r in conn.execute("PRAGMA table_info(referencias_rapidas)")}
+    if "clase_id" not in columnas_ref:
+        conn.execute(
+            "ALTER TABLE referencias_rapidas ADD COLUMN clase_id INTEGER REFERENCES clases(id) ON DELETE CASCADE"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_referencias_clase ON referencias_rapidas(clase_id)"
+        )
+
 
 def init_db() -> None:
     schema = SCHEMA_PATH.read_text()

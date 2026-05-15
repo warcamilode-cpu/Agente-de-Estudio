@@ -50,6 +50,7 @@ class AccionIn(BaseModel):
 
 class ReferenciaIn(BaseModel):
     materia_id: int
+    clase_id: int | None = None
     termino: str
     definicion: str
 
@@ -305,6 +306,16 @@ def eliminar_accion(accion_id: int):
 
 # ── Referencias rápidas ───────────────────────────────────────────
 
+@router.get("/clases/{clase_id}/referencias")
+def listar_referencias_clase(clase_id: int):
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM referencias_rapidas WHERE clase_id = ? ORDER BY termino",
+            (clase_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 @router.get("/materias/{materia_id}/referencias")
 def listar_referencias(materia_id: int):
     with db() as conn:
@@ -314,12 +325,13 @@ def listar_referencias(materia_id: int):
         ).fetchall()
     return [dict(r) for r in rows]
 
+
 @router.post("/referencias", status_code=201)
 def crear_referencia(body: ReferenciaIn):
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO referencias_rapidas (materia_id, termino, definicion) VALUES (?,?,?)",
-            (body.materia_id, body.termino, body.definicion),
+            "INSERT INTO referencias_rapidas (materia_id, clase_id, termino, definicion) VALUES (?,?,?,?)",
+            (body.materia_id, body.clase_id, body.termino, body.definicion),
         )
         row = conn.execute("SELECT * FROM referencias_rapidas WHERE id = ?", (cur.lastrowid,)).fetchone()
     return dict(row)

@@ -4,6 +4,8 @@ let _docActivoId   = null;
 let _docsTabActual = "repo";
 let _maiaHistorial = [];
 let _maiaToksAcum  = 0;
+let _maiaUltimaPregunta  = "";
+let _maiaUltimaRespuesta = "";
 
 async function cargarDocumentos() {
   const materiaId = document.getElementById("docs-filtro-materia")?.value || "";
@@ -152,13 +154,14 @@ async function eliminarDoc(id) {
 
 function _docsTab(tab) {
   _docsTabActual = tab;
-  ["repo", "maia"].forEach(t => {
+  ["repo", "maia", "biblioteca"].forEach(t => {
     const panel = document.getElementById(`docs-tab-${t}`);
     const btn   = document.getElementById(`docs-stab-${t}`);
-    if (panel) panel.style.display = t !== tab ? "none" : (t === "maia" ? "flex" : "");
+    if (panel) panel.style.display = t !== tab ? "none" : (t === "maia" ? "flex" : "flex");
     if (btn)   btn.classList.toggle("active", t === tab);
   });
-  if (tab === "maia") _poblarSelectMaia();
+  if (tab === "maia")       _poblarSelectMaia();
+  if (tab === "biblioteca") _cargarBiblioteca();
 }
 
 async function _poblarSelectMaia() {
@@ -177,6 +180,7 @@ async function _enviarMaia(e) {
   const texto  = input.value.trim();
   if (!texto) return;
   input.value  = "";
+  _maiaUltimaPregunta = texto;
 
   const docId   = document.getElementById("maia-doc-sel")?.value || null;
   const msgArea = document.getElementById("maia-messages");
@@ -236,6 +240,9 @@ async function _enviarMaia(e) {
     { role: "assistant", content: acumulado },
   );
 
+  _maiaUltimaRespuesta = acumulado;
+  _mostrarBotonGuardar();
+
   // Contador de tokens persistente
   _maiaToksAcum += Math.round((texto.length + acumulado.length) / 4);
   const tokEl = document.getElementById("maia-tok-count");
@@ -282,3 +289,83 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// ── Biblioteca de Maia ───────────────────────────────────────────
+
+function _mostrarBotonGuardar() {
+  const existing = document.getElementById("maia-btn-guardar-wrap");
+  if (existing) existing.remove();
+
+  const wrap = document.createElement("div");
+  wrap.id = "maia-btn-guardar-wrap";
+  wrap.style.cssText = "padding:.3rem var(--gap) 0; flex-shrink:0;";
+  wrap.innerHTML = `<button class="btn btn-secondary btn-sm" onclick="_guardarEnBiblioteca()" style="font-size:.75rem;">
+    <i class="fi fi-rr-bookmark"></i> Guardar en Biblioteca
+  </button>`;
+
+  const form = document.getElementById("maia-form");
+  if (form) form.parentNode.insertBefore(wrap, form);
+}
+
+async function _guardarEnBiblioteca() {
+  if (!_maiaUltimaPregunta || !_maiaUltimaRespuesta) return;
+  const docId    = document.getElementById("maia-doc-sel")?.value || null;
+  const titulo   = _maiaUltimaPregunta.length > 80
+    ? _maiaUltimaPregunta.slice(0, 77) + "…"
+    : _maiaUltimaPregunta;
+
+  try {
+    await api("POST", "/documentos/biblioteca", {
+      titulo,
+      pregunta:   _maiaUltimaPregunta,
+      respuesta:  _maiaUltimaRespuesta,
+      doc_id:     docId ? +docId : null,
+    });
+    document.getElementById("maia-btn-guardar-wrap")?.remove();
+    toast("Guardado en Biblioteca");
+  } catch (e) {
+    toast(`Error al guardar: ${e.message}`, 4000);
+  }
+}
+
+async function _cargarBiblioteca() {
+  const lista = document.getElementById("maia-biblioteca-lista");
+  if (!lista) return;
+  lista.innerHTML = '<p style="color:var(--text-muted); font-size:.875rem; text-align:center;">Cargando…</p>';
+  try {
+    const items = await api("GET", "/documentos/biblioteca");
+    if (!items.length) {
+      lista.innerHTML = '<p style="color:var(--text-muted); font-size:.875rem; text-align:center; padding-top:1.5rem;">Sin análisis guardados aún.<br>Hacé una consulta a Maia y guardala.</p>';
+      return;
+    }
+    lista.innerHTML = items.map(it => `
+      <div class="card" style="padding:.7rem .9rem;">
+        <div style="display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.45rem;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:700; font-size:.875rem; margin-bottom:.1rem;">${_htmlEsc(it.titulo)}</div>
+            <div style="font-size:.72rem; color:var(--text-muted);">
+              ${it.doc_titulo ? it.doc_titulo + ' · ' : ''}${it.creado_at ? it.creado_at.slice(0,10) : ''}
+            </div>
+          </div>
+          <button class="cn-btn-icon" title="Eliminar" onclick="_eliminarBiblioteca(${it.id})">✕</button>
+        </div>
+        <details style="font-size:.84rem;">
+          <summary style="cursor:pointer; color:var(--accent-h); font-size:.8rem; margin-bottom:.4rem;">Ver análisis completo</summary>
+          <div style="margin-top:.4rem; padding:.5rem; background:var(--surface2); border-radius:var(--radius); border-left:3px solid var(--accent);">
+            <div style="font-size:.75rem; color:var(--text-muted); margin-bottom:.3rem; font-weight:600;">PREGUNTA</div>
+            <div style="margin-bottom:.6rem;">${_htmlEsc(it.pregunta)}</div>
+            <div style="font-size:.75rem; color:var(--text-muted); margin-bottom:.3rem; font-weight:600;">RESPUESTA</div>
+            <div>${marked.parse(it.respuesta)}</div>
+          </div>
+        </details>
+      </div>`).join("");
+  } catch (e) {
+    lista.innerHTML = `<p style="color:var(--danger); font-size:.875rem;">Error: ${e.message}</p>`;
+  }
+}
+
+async function _eliminarBiblioteca(id) {
+  if (!confirm("¿Eliminar este análisis?")) return;
+  await api("DELETE", `/documentos/biblioteca/${id}`);
+  _cargarBiblioteca();
+}

@@ -200,7 +200,9 @@ function _rteBarra(fieldId) {
     <button class="rte-btn" title="Código"    onmousedown="event.preventDefault();_rteEnvolver('${fieldId}','code')">{ }</button>
     <span class="rte-sep-v"></span>
     <button class="rte-btn" title="Separador" onmousedown="event.preventDefault();document.execCommand('insertHTML',false,'<hr/>')">—</button>
-    <button class="rte-btn" title="Tabla"     onmousedown="event.preventDefault();_rteTabla()">⊞</button>
+    <button class="rte-btn" title="Tabla"         onmousedown="event.preventDefault();_rteTabla()">⊞</button>
+    <button class="rte-btn" title="Agregar fila"  onclick="_rteAddFila('${fieldId}')">+↓</button>
+    <button class="rte-btn" title="Agregar columna" onclick="_rteAddCol('${fieldId}')">+→</button>
   </div>`;
 }
 
@@ -388,8 +390,8 @@ async function _eliminarAccion(id) {
 // ── Referencias rápidas ───────────────────────────────────────────
 
 async function _cargarReferencias() {
-  if (!_matActiva) return;
-  const refs = await api("GET", `/cuaderno/materias/${_matActiva.id}/referencias`);
+  if (!_claseActiva) return;
+  const refs = await api("GET", `/cuaderno/clases/${_claseActiva.id}/referencias`);
   _renderReferencias(refs);
 }
 
@@ -419,7 +421,7 @@ async function _agregarReferencia() {
   const termino = document.getElementById("cn-ref-termino")?.value.trim();
   const def     = document.getElementById("cn-ref-def")?.value.trim();
   if (!termino || !def) { toast("Completá término y definición"); return; }
-  await api("POST", "/cuaderno/referencias", { materia_id: _matActiva.id, termino, definicion: def });
+  await api("POST", "/cuaderno/referencias", { materia_id: _matActiva.id, clase_id: _claseActiva.id, termino, definicion: def });
   _cargarReferencias();
 }
 
@@ -638,6 +640,55 @@ function _formatFecha(fecha) {
   if (!fecha) return "";
   const [y, m, d] = fecha.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function _rteAddFila(fieldId) {
+  const editor = document.getElementById(fieldId);
+  if (!editor) return;
+  const sel = window.getSelection();
+  let table = null;
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.anchorNode;
+    while (node && node !== editor) {
+      if (node.nodeName === "TABLE") { table = node; break; }
+      node = node.parentNode;
+    }
+  }
+  if (!table) table = editor.querySelector("table");
+  if (!table) { toast("Colocá el cursor dentro de una tabla primero"); return; }
+  const ref = table.rows[table.rows.length - 1];
+  const newRow = table.insertRow(-1);
+  for (let i = 0; i < ref.cells.length; i++) {
+    const cell = newRow.insertCell(-1);
+    cell.innerHTML = "&nbsp;";
+  }
+}
+
+function _rteAddCol(fieldId) {
+  const editor = document.getElementById(fieldId);
+  if (!editor) return;
+  const sel = window.getSelection();
+  let table = null;
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.anchorNode;
+    while (node && node !== editor) {
+      if (node.nodeName === "TABLE") { table = node; break; }
+      node = node.parentNode;
+    }
+  }
+  if (!table) table = editor.querySelector("table");
+  if (!table) { toast("Colocá el cursor dentro de una tabla primero"); return; }
+  for (let i = 0; i < table.rows.length; i++) {
+    const row = table.rows[i];
+    if (i === 0) {
+      const th = document.createElement("th");
+      th.innerHTML = "&nbsp;";
+      row.appendChild(th);
+    } else {
+      const td = row.insertCell(-1);
+      td.innerHTML = "&nbsp;";
+    }
+  }
 }
 
 // ── Inicialización ───────────────────────────────────────────────
