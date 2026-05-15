@@ -11,7 +11,7 @@ load_dotenv()
 
 _PROVEEDOR = os.getenv("LLM_PROVEEDOR", "claude")
 _MODELO_CLAUDE = os.getenv("MODELO_CLAUDE", "claude-haiku-4-5-20251001")
-_MAX_TOKENS = 2048
+_MAX_TOKENS      = 4096
 _MAX_TOKENS_PLAN = 8192
 
 _cliente_claude: anthropic.Anthropic | None = None
