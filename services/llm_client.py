@@ -12,6 +12,7 @@ load_dotenv()
 _PROVEEDOR = os.getenv("LLM_PROVEEDOR", "claude")
 _MODELO_CLAUDE = os.getenv("MODELO_CLAUDE", "claude-haiku-4-5-20251001")
 _MAX_TOKENS = 2048
+_MAX_TOKENS_PLAN = 8192
 
 _cliente_claude: anthropic.Anthropic | None = None
 
@@ -23,11 +24,11 @@ def _get_claude() -> anthropic.Anthropic:
     return _cliente_claude
 
 
-def preguntar(system_prompt: str, mensajes: list[dict]) -> str:
+def preguntar(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None) -> str:
     if _PROVEEDOR == "claude":
         respuesta = _get_claude().messages.create(
             model=_MODELO_CLAUDE,
-            max_tokens=_MAX_TOKENS,
+            max_tokens=max_tokens or _MAX_TOKENS,
             system=system_prompt,
             messages=mensajes,
         )
@@ -35,11 +36,11 @@ def preguntar(system_prompt: str, mensajes: list[dict]) -> str:
     raise NotImplementedError(f"Proveedor '{_PROVEEDOR}' no implementado aún")
 
 
-def preguntar_stream(system_prompt: str, mensajes: list[dict]) -> Generator[str, None, None]:
+def preguntar_stream(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None) -> Generator[str, None, None]:
     if _PROVEEDOR == "claude":
         with _get_claude().messages.stream(
             model=_MODELO_CLAUDE,
-            max_tokens=_MAX_TOKENS,
+            max_tokens=max_tokens or _MAX_TOKENS,
             system=system_prompt,
             messages=mensajes,
         ) as stream:

@@ -23,7 +23,6 @@
         </div>
         <div class="brand-info">
           <span class="brand-name">Atalaya Pléyades</span>
-          <span class="brand-sub">Shaula · Atlas · Electra</span>
         </div>
       </div>
       <button class="sidebar-toggle" id="sidebar-toggle" title="Colapsar menú">‹</button>
@@ -416,7 +415,18 @@
     <h2>Subir documento</h2>
     <div><label>Archivo (PDF, TXT, MD, JSON)</label><input id="md-archivo" type="file" accept=".pdf,.txt,.md,.json"></div>
     <div><label>Título</label><input id="md-titulo" type="text" placeholder="Ej: Guía de tutela — Semana 3"></div>
-    <div><label>Materia</label><select id="docs-materia"></select></div>
+    <div>
+      <label>Asociar a</label>
+      <select id="md-nivel" onchange="_docCambiarNivel(this.value)" style="width:100%; margin-bottom:.4rem;">
+        <option value="ninguno">— Sin asociación (documento general) —</option>
+        <option value="programa">Programa</option>
+        <option value="semestre">Semestre</option>
+        <option value="materia">Materia / Clase</option>
+      </select>
+      <select id="md-programa-sel" style="display:none; width:100%;"><option value="">— Seleccioná programa —</option></select>
+      <select id="md-semestre-sel" style="display:none; width:100%;"><option value="">— Seleccioná semestre —</option></select>
+      <select id="docs-materia"    style="display:none; width:100%;"><option value="">— Seleccioná materia —</option></select>
+    </div>
     <div><label>Tags</label><input id="md-tags" type="text" placeholder="lectura, guia, parcial…"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarModalDoc()">Cancelar</button>

@@ -24,16 +24,30 @@ MIME_SALIDA = {"pdf": "application/pdf", "txt": "text/plain", "md": "text/plain;
 
 
 @router.get("")
-def listar_documentos(materia_id: int | None = None):
+def listar_documentos(
+    materia_id:  int | None = None,
+    semestre_id: int | None = None,
+    programa_id: int | None = None,
+):
     with db() as conn:
         if materia_id is not None:
             rows = conn.execute(
-                "SELECT id, materia_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE materia_id = ? ORDER BY creado_at DESC",
+                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE materia_id = ? ORDER BY creado_at DESC",
                 (materia_id,),
+            ).fetchall()
+        elif semestre_id is not None:
+            rows = conn.execute(
+                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE semestre_id = ? ORDER BY creado_at DESC",
+                (semestre_id,),
+            ).fetchall()
+        elif programa_id is not None:
+            rows = conn.execute(
+                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE programa_id = ? ORDER BY creado_at DESC",
+                (programa_id,),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT id, materia_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos ORDER BY creado_at DESC"
+                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos ORDER BY creado_at DESC"
             ).fetchall()
     return [dict(r) for r in rows]
 
@@ -77,7 +91,9 @@ def servir_archivo(doc_id: int):
 async def subir_documento(
     archivo: UploadFile = File(...),
     titulo: str = Form(...),
-    materia_id: str = Form(""),
+    materia_id:  str = Form(""),
+    semestre_id: str = Form(""),
+    programa_id: str = Form(""),
     tags: str = Form(""),
 ):
     tipo = TIPOS_MIME.get(archivo.content_type or "")
@@ -96,12 +112,14 @@ async def subir_documento(
     ruta.write_bytes(contenido)
 
     texto = extraer_texto(str(ruta))
-    materia_id_val = int(materia_id) if materia_id.strip() else None
+    materia_id_val  = int(materia_id)  if materia_id.strip()  else None
+    semestre_id_val = int(semestre_id) if semestre_id.strip() else None
+    programa_id_val = int(programa_id) if programa_id.strip() else None
 
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO documentos (materia_id, titulo, tipo, archivo_nombre, archivo_path, contenido_texto, tags) VALUES (?,?,?,?,?,?,?)",
-            (materia_id_val, titulo, tipo, archivo.filename, nombre_unico, texto, tags),
+            "INSERT INTO documentos (materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, archivo_path, contenido_texto, tags) VALUES (?,?,?,?,?,?,?,?,?)",
+            (materia_id_val, semestre_id_val, programa_id_val, titulo, tipo, archivo.filename, nombre_unico, texto, tags),
         )
         doc_id = cur.lastrowid
 

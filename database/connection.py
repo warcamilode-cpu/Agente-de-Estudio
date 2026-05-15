@@ -136,6 +136,15 @@ def _migraciones(conn: sqlite3.Connection) -> None:
     if "sesiones_chat" in tablas and "materia_id" not in columnas_sc:
         conn.execute("ALTER TABLE sesiones_chat ADD COLUMN materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL")
 
+    # Migración: semestre_id y programa_id en documentos
+    columnas_docs = {r[1] for r in conn.execute("PRAGMA table_info(documentos)")}
+    if "semestre_id" not in columnas_docs:
+        conn.execute("ALTER TABLE documentos ADD COLUMN semestre_id INTEGER REFERENCES semestres(id) ON DELETE SET NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_documentos_semestre ON documentos(semestre_id)")
+    if "programa_id" not in columnas_docs:
+        conn.execute("ALTER TABLE documentos ADD COLUMN programa_id INTEGER REFERENCES programas(id) ON DELETE SET NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_documentos_programa ON documentos(programa_id)")
+
     # Migración: tabla de planes de estudio del Planificador
     if "planes_estudio" not in tablas:
         conn.executescript("""

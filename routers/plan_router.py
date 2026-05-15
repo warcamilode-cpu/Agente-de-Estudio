@@ -100,6 +100,7 @@ def generar_plan_topico(body: PlanIn):
     plan_texto = llm_client.preguntar(
         _SYSTEM_PLANIFICADOR,
         [{"role": "user", "content": prompt_usuario}],
+        max_tokens=8192,
     )
 
     with db() as conn:

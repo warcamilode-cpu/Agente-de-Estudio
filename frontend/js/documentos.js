@@ -88,11 +88,39 @@ function _htmlEsc(str) {
 
 // ── Subida ───────────────────────────────────────────────────────
 
+function _docCambiarNivel(nivel) {
+  document.getElementById("md-programa-sel").style.display = nivel === "programa"  ? "" : "none";
+  document.getElementById("md-semestre-sel").style.display = nivel === "semestre"  ? "" : "none";
+  document.getElementById("docs-materia").style.display    = nivel === "materia"   ? "" : "none";
+}
+
 function abrirModalSubirDoc() {
   document.getElementById("modal-doc").classList.add("open");
   document.getElementById("md-titulo").value  = "";
   document.getElementById("md-archivo").value = "";
   document.getElementById("md-tags").value    = "";
+  document.getElementById("md-nivel").value   = "ninguno";
+  _docCambiarNivel("ninguno");
+  _poblarSelectsDocModal();
+}
+
+function _poblarSelectsDocModal() {
+  const selProg = document.getElementById("md-programa-sel");
+  const selSem  = document.getElementById("md-semestre-sel");
+  selProg.innerHTML = '<option value="">— Seleccioná programa —</option>';
+  selSem.innerHTML  = '<option value="">— Seleccioná semestre —</option>';
+  (_estructura || []).forEach(prog => {
+    if (prog.id) {
+      const o = document.createElement("option");
+      o.value = prog.id; o.textContent = prog.nombre;
+      selProg.appendChild(o);
+    }
+    (prog.semestres || []).forEach(sem => {
+      const o = document.createElement("option");
+      o.value = sem.id; o.textContent = `${prog.nombre} › ${sem.nombre}`;
+      selSem.appendChild(o);
+    });
+  });
 }
 
 function cerrarModalDoc() {
@@ -100,19 +128,26 @@ function cerrarModalDoc() {
 }
 
 async function subirDocumento() {
-  const archivo   = document.getElementById("md-archivo").files[0];
-  const titulo    = document.getElementById("md-titulo").value.trim();
-  const materiaId = document.getElementById("docs-materia").value;
-  const tags      = document.getElementById("md-tags").value.trim();
+  const archivo = document.getElementById("md-archivo").files[0];
+  const titulo  = document.getElementById("md-titulo").value.trim();
+  const nivel   = document.getElementById("md-nivel").value;
+  const tags    = document.getElementById("md-tags").value.trim();
+
+  let programaId = "", semestreId = "", materiaId = "";
+  if (nivel === "programa")  programaId = document.getElementById("md-programa-sel").value;
+  if (nivel === "semestre")  semestreId = document.getElementById("md-semestre-sel").value;
+  if (nivel === "materia")   materiaId  = document.getElementById("docs-materia").value;
 
   if (!archivo) { toast("Seleccioná un archivo"); return; }
   if (!titulo)  { toast("Escribí un título"); return; }
 
   const formData = new FormData();
-  formData.append("archivo",    archivo);
-  formData.append("titulo",     titulo);
-  formData.append("materia_id", materiaId);
-  formData.append("tags",       tags);
+  formData.append("archivo",     archivo);
+  formData.append("titulo",      titulo);
+  formData.append("materia_id",  materiaId);
+  formData.append("semestre_id", semestreId);
+  formData.append("programa_id", programaId);
+  formData.append("tags",        tags);
 
   const btn = document.getElementById("btn-subir-doc");
   btn.disabled = true; btn.textContent = "Subiendo…";
