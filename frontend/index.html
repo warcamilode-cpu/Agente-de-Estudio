@@ -3,105 +3,395 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Shaula — Agente de Estudio</title>
+  <title>Atalaya Pléyades</title>
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css">
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 
-<nav>
-  <button class="active" data-tab="chat">💬 Shaula</button>
-  <button data-tab="temas">📚 Temas</button>
-  <button data-tab="notas">📝 Notas</button>
-  <button data-tab="flashcards">🃏 Flashcards</button>
-  <button data-tab="dashboard">📊 Dashboard</button>
-</nav>
+<div class="app-shell">
 
-<main>
-
-  <!-- ── CHAT ── -->
-  <section id="tab-chat" class="section active">
-
-    <!-- Barra de sesión activa -->
-    <div id="chat-sesion-bar">
-      <span id="chat-sesion-titulo" class="sesion-titulo">Nueva sesión</span>
-      <div class="row" style="gap:.4rem; flex-shrink:0">
-        <button class="btn btn-secondary btn-sm" onclick="abrirSesiones()">📋 Sesiones</button>
-        <button class="btn btn-secondary btn-sm" onclick="nuevaSesionChat()">+ Nueva</button>
-      </div>
-    </div>
-
-    <div id="chat-messages">
-      <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
-    </div>
-
-    <form id="chat-form">
-      <select id="chat-topic" style="max-width:160px"></select>
-      <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off">
-      <button type="submit" class="btn btn-primary">Enviar</button>
-    </form>
-  </section>
-
-  <!-- ── TEMAS ── -->
-  <section id="tab-temas" class="section">
-    <div class="row">
-      <h2 style="flex:1">Mis temas de estudio</h2>
-      <button class="btn btn-primary" id="btn-nuevo-tema">+ Nuevo curso</button>
-    </div>
-    <div id="temas-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
-  </section>
-
-  <!-- ── NOTAS ── -->
-  <section id="tab-notas" class="section">
-    <div class="row">
-      <input id="notas-busqueda" type="text" placeholder="Buscar notas…">
-      <select id="notas-filtro-topic"><option value="">Todos los temas</option></select>
-      <button class="btn btn-primary" id="btn-nueva-nota">+ Nueva nota</button>
-    </div>
-    <div id="notas-lista"></div>
-  </section>
-
-  <!-- ── FLASHCARDS ── -->
-  <section id="tab-flashcards" class="section">
-    <div class="row">
-      <select id="fc-filtro-topic"><option value="">Todos los temas</option></select>
-      <button class="btn btn-primary" id="btn-nueva-card">+ Nueva card</button>
-      <button class="btn btn-secondary" id="btn-modo-repaso">Repasar pendientes</button>
-    </div>
-
-    <!-- modo repaso -->
-    <div id="fc-repaso" style="display:none; flex-direction:column; gap:1rem; align-items:center;">
-      <p id="fc-repaso-contador" style="color:var(--text-muted); font-size:.9rem;"></p>
-      <div class="flashcard-flip card" id="fc-flip" style="width:100%; max-width:560px;" onclick="fcFlip()">
-        <div class="flashcard-inner">
-          <div class="flashcard-front" id="fc-pregunta"></div>
-          <div class="flashcard-back"  id="fc-respuesta"></div>
+  <!-- ══════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-avatar">
+          <img src="/static/img/shaula.png" alt="Shaula" onerror="this.style.display='none'">
+          <span id="brand-avatar-fallback"><i class="fi fi-rr-books"></i></span>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">Atalaya Pléyades</span>
         </div>
       </div>
-      <div class="rating-row" id="fc-rating-row" style="display:none; width:100%; max-width:560px;">
-        <button class="btn btn-danger btn-sm"     onclick="fcCalificar(0)">0 – Nada</button>
-        <button class="btn btn-secondary btn-sm"  onclick="fcCalificar(2)">2 – Difícil</button>
-        <button class="btn btn-secondary btn-sm"  onclick="fcCalificar(3)">3 – Bien</button>
-        <button class="btn btn-primary btn-sm"    onclick="fcCalificar(4)">4 – Fácil</button>
-        <button class="btn btn-primary btn-sm"    onclick="fcCalificar(5)">5 – Perfecto</button>
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="fcSalirRepaso()">Salir del repaso</button>
+      <button class="sidebar-toggle" id="sidebar-toggle" title="Colapsar menú">‹</button>
     </div>
 
-    <!-- lista -->
-    <div id="fc-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
-  </section>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-label">Principal</span>
+        <button class="nav-item active" data-tab="chat">
+          <span class="nav-icon"><i class="fi fi-rr-comment"></i></span>
+          <span class="nav-label">Chat con Shaula</span>
+        </button>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-label">Material de estudio</span>
+        <button class="nav-item" data-tab="cuaderno">
+          <span class="nav-icon"><i class="fi fi-rr-book-alt"></i></span>
+          <span class="nav-label">Cuaderno Cornell</span>
+        </button>
+        <button class="nav-item" data-tab="flashcards">
+          <span class="nav-icon"><i class="fi fi-rr-layers"></i></span>
+          <span class="nav-label">Flashcards</span>
+        </button>
+        <button class="nav-item" data-tab="documentos">
+          <span class="nav-icon"><i class="fi fi-rr-folder"></i></span>
+          <span class="nav-label">Documentos</span>
+        </button>
+      </div>
+      <div class="nav-section">
+        <span class="nav-section-label">Planificación</span>
+        <button class="nav-item" data-tab="plan">
+          <span class="nav-icon"><i class="fi fi-rr-list-check"></i></span>
+          <span class="nav-label">Programador</span>
+        </button>
+        <button class="nav-item" data-tab="dashboard">
+          <span class="nav-icon"><i class="fi fi-rr-layout-fluid"></i></span>
+          <span class="nav-label">Dashboard</span>
+        </button>
+      </div>
+    </nav>
 
-  <!-- ── DASHBOARD ── -->
-  <section id="tab-dashboard" class="section">
-    <h2>Resumen de hoy</h2>
-    <div class="stats-grid" id="dash-stats"></div>
-    <h2>Progreso por tema</h2>
-    <div id="dash-topics" style="display:flex; flex-direction:column; gap:.75rem;"></div>
-  </section>
+    <div class="agentes-panel" id="agentes-panel">
+    <div class="agentes-resize-handle" id="agentes-resize-handle"></div>
+    <div class="agentes-header">
+      <span class="agentes-titulo">Agentes</span>
+    </div>
+    <div class="agentes-sprites" id="agentes-sprites">
+      <div class="sprite-wrap" data-tab="chat"     data-nombre="Shaula"  title="Shaula — Chat">
+        <img src="/static/img/shaula.png"  alt="Shaula"  class="sprite-img" onerror="this.src=''">
+        <span class="sprite-label">Shaula</span>
+      </div>
+      <div class="sprite-wrap" data-tab="plan"     data-nombre="Atlas"   title="Atlas — Programador">
+        <img src="/static/img/atlas.png"   alt="Atlas"   class="sprite-img" onerror="this.src=''">
+        <span class="sprite-label">Atlas</span>
+      </div>
+      <div class="sprite-wrap" data-tab="plan"     data-nombre="Electra" title="Electra — Evaluadora">
+        <img src="/static/img/electra.png" alt="Electra" class="sprite-img" onerror="this.src=''">
+        <span class="sprite-label">Electra</span>
+      </div>
+      <div class="sprite-wrap" data-tab="documentos" data-nombre="Maia"  title="Maia — Documentos">
+        <img src="/static/img/maia.png"    alt="Maia"    class="sprite-img" onerror="this.src=''">
+        <span class="sprite-label">Maia</span>
+      </div>
+    </div>
+    </div>
+  </aside>
 
-</main>
+  <!-- ══════════════════════════════════
+       CONTENIDO PRINCIPAL
+  ══════════════════════════════════ -->
+  <div class="app-main">
+    <main>
 
-<!-- ── MODAL SESIONES ── -->
+      <!-- ── CHAT ── -->
+      <section id="tab-chat" class="section active">
+        <div id="chat-sesion-bar">
+          <span id="chat-sesion-titulo" class="sesion-titulo">Nueva sesión</span>
+          <div class="row" style="gap:.4rem; flex-shrink:0">
+            <button class="btn btn-secondary btn-sm" onclick="abrirSesiones()"><i class="fi fi-rr-clock"></i> Sesiones</button>
+            <button class="btn btn-secondary btn-sm" onclick="nuevaSesionChat()"><i class="fi fi-rr-plus"></i> Nueva</button>
+          </div>
+        </div>
+        <div id="chat-messages">
+          <div class="msg-row assistant">
+            <div class="msg-avatar"><img src="/static/img/shaula.png" class="msg-avatar-img" alt="shaula" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi fi-rr-star" style="display:none;"></i></div>
+            <div class="msg assistant shaula-intro">Hola, soy <strong>Shaula</strong>, tu tutora de estudio. Seleccioná un tema y preguntame lo que necesites.</div>
+          </div>
+        </div>
+        <form id="chat-form">
+          <select id="chat-materia" style="max-width:160px"></select>
+          <div style="flex:1; position:relative; display:flex; align-items:center;">
+            <input id="chat-input" type="text" placeholder="Preguntale algo a Shaula…" autocomplete="off" style="width:100%; padding-right:3.5rem;">
+            <span id="chat-token-count" title="Tokens estimados mientras escribís (chars÷4)"
+              style="position:absolute; right:.6rem; font-size:.7rem; color:var(--text-dim);
+                     pointer-events:none; font-variant-numeric:tabular-nums; white-space:nowrap;"></span>
+          </div>
+          <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+        <div id="chat-tok-session" class="tok-session"></div>
+      </section>
+
+      <!-- ── CUADERNO ── -->
+      <section id="tab-cuaderno" class="section" style="padding:0; overflow:hidden;">
+        <div class="cuaderno-shell">
+          <!-- Panel nav del cuaderno -->
+          <div class="cuaderno-nav">
+            <div class="cuaderno-nav-scroll" id="cn-nav-scroll"></div>
+            <div class="cuaderno-nav-footer">
+              <button class="btn btn-primary btn-sm" id="btn-nuevo-programa" style="width:100%">+ Nuevo programa</button>
+            </div>
+          </div>
+          <!-- Contenido del cuaderno -->
+          <div class="cuaderno-contenido" id="cn-contenido">
+            <div class="cuaderno-vacia">
+              <div class="icon">📖</div>
+              <p>Seleccioná una materia o creá tu primer semestre.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── FLASHCARDS ── -->
+      <section id="tab-flashcards" class="section">
+        <div class="row">
+          <select id="fc-filtro-materia"><option value="">Todas las materias</option></select>
+          <button class="btn btn-primary" id="btn-nueva-card">+ Nueva card</button>
+          <button class="btn btn-secondary" id="btn-modo-repaso">Repasar pendientes</button>
+        </div>
+        <div id="fc-repaso" style="display:none; flex-direction:column; gap:1rem; align-items:center;">
+          <p id="fc-repaso-contador" style="color:var(--text-muted); font-size:.9rem;"></p>
+          <div class="flashcard-flip card" id="fc-flip" style="width:100%; max-width:560px;" onclick="fcFlip()">
+            <div class="flashcard-inner">
+              <div class="flashcard-front" id="fc-pregunta"></div>
+              <div class="flashcard-back"  id="fc-respuesta"></div>
+            </div>
+          </div>
+          <div class="rating-row" id="fc-rating-row" style="display:none; width:100%; max-width:560px;">
+            <button class="btn btn-danger btn-sm"    onclick="fcCalificar(0)">0 – Nada</button>
+            <button class="btn btn-secondary btn-sm" onclick="fcCalificar(2)">2 – Difícil</button>
+            <button class="btn btn-secondary btn-sm" onclick="fcCalificar(3)">3 – Bien</button>
+            <button class="btn btn-primary btn-sm"   onclick="fcCalificar(4)">4 – Fácil</button>
+            <button class="btn btn-primary btn-sm"   onclick="fcCalificar(5)">5 – Perfecto</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="fcSalirRepaso()">Salir del repaso</button>
+        </div>
+        <div id="fc-lista" style="display:flex; flex-direction:column; gap:.5rem;"></div>
+      </section>
+
+      <!-- ── DOCUMENTOS ── -->
+      <section id="tab-documentos" class="section" style="padding:0; overflow:hidden; flex-direction:column;">
+
+        <!-- Sub-pestañas -->
+        <div class="docs-subtabs-bar">
+          <button class="docs-subtab-btn active" id="docs-stab-repo"       onclick="_docsTab('repo')"><i class="fi fi-rr-folder"></i> Repositorio</button>
+          <button class="docs-subtab-btn"         id="docs-stab-maia"       onclick="_docsTab('maia')"><i class="fi fi-rr-search"></i> Maia</button>
+          <button class="docs-subtab-btn"         id="docs-stab-biblioteca" onclick="_docsTab('biblioteca')"><i class="fi fi-rr-bookmark"></i> Biblioteca</button>
+        </div>
+
+        <!-- Panel Repositorio -->
+        <div id="docs-tab-repo" class="docs-shell" style="flex:1; overflow:hidden;">
+          <div class="docs-panel-lista">
+            <div class="docs-panel-header">
+              <select id="docs-filtro-materia" style="flex:1; min-width:0;"><option value="">Todas las materias</option></select>
+              <button class="btn btn-primary btn-sm" id="btn-subir-archivo">+ Subir</button>
+            </div>
+            <p class="docs-hint">PDF · TXT · MD · JSON</p>
+            <div id="docs-lista"></div>
+          </div>
+          <div class="docs-panel-visor" id="docs-visor">
+            <div class="docs-visor-vacio">
+              <div style="font-size:2.5rem">📄</div>
+              <p>Seleccioná un documento para verlo aquí.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel Maia (análisis) -->
+        <div id="docs-tab-maia" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+          <div id="maia-messages">
+            <div class="msg-row assistant">
+              <div class="msg-avatar"><img src="/static/img/maia.png" class="msg-avatar-img" alt="maia" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi fi-rr-search" style="display:none;"></i></div>
+              <div class="msg assistant maia-intro">
+                Hola, soy <strong>Maia</strong>, agente de análisis de Atalaya Pléyades.<br>
+                Seleccioná un documento y preguntame sobre su contenido. Puedo resumir, comparar, extraer ideas clave y más.
+              </div>
+            </div>
+          </div>
+          <form id="maia-form" style="display:flex; gap:.5rem; padding:var(--gap); padding-top:.5rem; border-top:1px solid var(--border); flex-shrink:0;">
+            <select id="maia-doc-sel" style="max-width:200px;"><option value="">— Todos los docs —</option></select>
+            <div style="flex:1; position:relative; display:flex; align-items:center;">
+              <input id="maia-input" type="text" placeholder="Preguntale a Maia sobre los documentos…" style="width:100%; padding-right:3.5rem;" autocomplete="off">
+              <span id="maia-tok-count" class="tok-badge"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Preguntar</button>
+          </form>
+          <div id="maia-tok-session" class="tok-session"></div>
+        </div>
+
+        <!-- Tab: Biblioteca de análisis de Maia -->
+        <div id="docs-tab-biblioteca" style="display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:.65rem var(--gap) .4rem; flex-shrink:0; border-bottom:1px solid var(--border);">
+            <span style="font-size:.82rem; font-weight:600; color:var(--text-muted);">Análisis guardados por Maia</span>
+          </div>
+          <div id="maia-biblioteca-lista" style="flex:1; overflow-y:auto; padding:var(--gap); display:flex; flex-direction:column; gap:.6rem;">
+            <p style="color:var(--text-muted); font-size:.875rem; text-align:center;">Cargando…</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ── PROGRAMADOR (Atlas + Electra) ── -->
+      <section id="tab-plan" class="section">
+
+        <!-- Sub-tabs siempre visibles (igual que Documentos) -->
+        <div class="plan-subtabs-bar" style="flex-shrink:0;">
+          <button class="plan-subtab-btn active" id="plan-stab-plan"       onclick="_planTab('plan')"><i class="fi fi-rr-list-check"></i> Plan</button>
+          <button class="plan-subtab-btn"         id="plan-stab-agentes"    onclick="_planTab('agentes')"><i class="fi fi-rr-comment-alt"></i> Agentes</button>
+          <button class="plan-subtab-btn"         id="plan-stab-calendario" onclick="_planTab('calendario')"><i class="fi fi-rr-calendar"></i> Calendario</button>
+        </div>
+
+        <!-- Tab: Plan generado -->
+        <div id="plan-tab-plan" style="flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0;">
+
+          <!-- Header -->
+          <div class="row" style="flex-shrink:0; padding:.6rem var(--gap) 0;">
+            <div style="flex:1;">
+              <h2 style="margin-bottom:.1rem;">Programador</h2>
+              <p style="font-size:.75rem; color:var(--text-muted); margin:0;">Atlas &amp; Electra</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="verHistorialPlanes()"><i class="fi fi-rr-clock"></i> Historial</button>
+          </div>
+
+          <!-- Formulario de nuevo plan -->
+          <div id="plan-form-area" class="card" style="margin:.5rem var(--gap); flex-shrink:0;">
+            <div style="margin-bottom:.6rem;">
+              <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Materia (opcional)</label>
+              <select id="plan-materia-sel" style="width:100%; margin-top:.3rem;"><option value="">— Sin filtro —</option></select>
+            </div>
+            <div style="margin-bottom:.75rem;">
+              <label style="font-size:.8rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">¿Qué tema querés estudiar?</label>
+              <textarea id="plan-tema-input" rows="2"
+                placeholder="Ej: Acción de tutela — requisitos y procedencia&#10;Ej: Funciones en Python — closures y decoradores"
+                style="width:100%; margin-top:.3rem; resize:vertical;"></textarea>
+            </div>
+            <button class="btn btn-primary" id="btn-generar-plan">Generar plan completo</button>
+          </div>
+
+          <!-- Contenido del plan (visible después de generar) -->
+          <div id="plan-contenido-wrap" style="display:none; flex:1; overflow-y:auto; min-height:0; padding:var(--gap);">
+            <p id="plan-fecha" style="color:var(--text-muted); font-size:.82rem; margin-bottom:.6rem;"></p>
+            <div id="plan-contenido" class="card" style="font-size:.9rem; line-height:1.8; margin-bottom:.75rem;"></div>
+            <button class="btn btn-secondary btn-sm" onclick="nuevoPlan()"><i class="fi fi-rr-plus"></i> Nuevo plan</button>
+          </div>
+
+        </div>
+
+        <!-- Tab: Agentes (Atlas / Electra) -->
+        <div id="plan-tab-agentes" style="display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0;">
+
+          <!-- Sin plan activo -->
+          <div id="plan-sin-plan-msg" style="flex:1; display:flex; align-items:center; justify-content:center; padding:var(--gap);">
+            <p style="color:var(--text-muted); font-size:.875rem; text-align:center; line-height:1.6;">
+              Generá un plan primero desde la pestaña <strong>Plan</strong>.<br>
+              Luego Atlas y Electra estarán listas para ayudarte.
+            </p>
+          </div>
+
+          <!-- Chat (visible cuando hay plan activo) -->
+          <div id="plan-agentes-chat" style="display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0;">
+            <div style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; flex-shrink:0; padding:.6rem var(--gap) .4rem;">
+              <span id="plan-agente-badge" class="plan-agente-badge plan-agente-plan"><i class="fi fi-rr-graduation-cap"></i> Atlas</span>
+              <span id="plan-agente-desc" style="flex:1; font-size:.75rem; color:var(--text-muted);">
+                Planificadora — responde dudas sobre el plan
+              </span>
+              <button id="btn-toggle-evaluador" class="btn btn-secondary btn-sm"
+                      onclick="toggleEvaluador()"><i class="fi fi-rr-bolt"></i> Activar Electra</button>
+            </div>
+            <div id="plan-chat-messages" style="flex:1; overflow-y:auto; min-height:0; padding:0 var(--gap); display:flex; flex-direction:column; gap:.5rem;"></div>
+            <form id="plan-chat-form" style="display:flex; gap:.5rem; padding:.5rem var(--gap) var(--gap); flex-shrink:0; border-top:1px solid var(--border);">
+              <div style="flex:1; position:relative; display:flex; align-items:center;">
+                <input id="plan-chat-input" type="text"
+                       placeholder="Escribí tu respuesta o duda…" style="width:100%; padding-right:3.5rem;" autocomplete="off">
+                <span id="plan-tok-count" class="tok-badge"></span>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Enviar</button>
+            </form>
+            <div id="plan-tok-session" class="tok-session"></div>
+          </div>
+
+        </div>
+
+        <!-- Tab: Calendario de sesiones -->
+        <div id="plan-tab-calendario" style="display:none; flex:1; overflow-y:auto; min-height:0; padding:var(--gap);">
+
+          <!-- Formulario para agregar cronograma -->
+          <div class="card" style="margin-bottom:.75rem;">
+            <div style="font-weight:700; font-size:.875rem; margin-bottom:.65rem;">Agregar al cronograma</div>
+            <div style="margin-bottom:.5rem;">
+              <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Tema</label>
+              <input type="text" id="plan-sched-tema" placeholder="Ej: Acción de tutela, Python decoradores…" style="width:100%;">
+            </div>
+            <div style="display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.5rem;">
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Fecha de inicio</label>
+                <input type="date" id="plan-sched-fecha">
+              </div>
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Sesiones</label>
+                <input type="number" id="plan-sched-dias" min="1" max="365" value="7" style="width:70px;">
+              </div>
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Hora inicio</label>
+                <input type="time" id="plan-sched-hora-ini" value="08:00">
+              </div>
+              <div>
+                <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem;">Hora fin</label>
+                <input type="time" id="plan-sched-hora-fin" value="09:00">
+              </div>
+            </div>
+            <div style="margin-bottom:.6rem;">
+              <label style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.3rem;">Días de la semana</label>
+              <div class="dias-semana-sel">
+                <label><input type="checkbox" name="plan-sched-dia" value="1"> Lun</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="2"> Mar</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="3"> Mié</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="4"> Jue</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="5"> Vie</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="6"> Sáb</label>
+                <label><input type="checkbox" name="plan-sched-dia" value="0"> Dom</label>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="_guardarCronograma()">
+              <i class="fi fi-rr-calendar"></i> Guardar cronograma
+            </button>
+          </div>
+
+          <!-- Lista de cronogramas guardados -->
+          <div id="plan-cronogramas-lista"></div>
+
+        </div>
+
+        <!-- Historial de planes guardados -->
+        <div id="plan-historial-area" style="display:none; padding:0 var(--gap);">
+          <div class="row" style="margin-bottom:.6rem;">
+            <h3 style="flex:1; font-size:.9rem;">Planes guardados</h3>
+            <button class="btn btn-secondary btn-sm" onclick="ocultarHistorial()"><i class="fi fi-rr-cross-small"></i> Cerrar</button>
+          </div>
+          <div id="plan-historial-lista" style="display:flex; flex-direction:column; gap:.35rem;"></div>
+        </div>
+
+      </section>
+
+      <!-- ── DASHBOARD ── -->
+      <section id="tab-dashboard" class="section">
+        <h2>Resumen de hoy</h2>
+        <div class="stats-grid" id="dash-stats"></div>
+        <h2>Progreso por tema</h2>
+        <div id="dash-topics" style="display:flex; flex-direction:column; gap:.75rem;"></div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MODALES
+══════════════════════════════════ -->
+
+<!-- Modal sesiones -->
 <div class="modal-overlay" id="modal-sesiones">
   <div class="modal">
     <h2>Sesiones anteriores</h2>
@@ -112,18 +402,12 @@
   </div>
 </div>
 
-<!-- ── MODAL TEMA ── -->
+<!-- Modal tema -->
 <div class="modal-overlay" id="modal-tema">
   <div class="modal">
     <h2 id="modal-tema-titulo">Nuevo tema</h2>
-    <div>
-      <label>Nombre del tema</label>
-      <input id="mt-nombre" type="text" placeholder="Ej: Derecho Constitucional">
-    </div>
-    <div>
-      <label>Descripción (opcional)</label>
-      <input id="mt-descripcion" type="text" placeholder="Breve descripción">
-    </div>
+    <div><label>Nombre</label><input id="mt-nombre" type="text" placeholder="Ej: Derecho Constitucional"></div>
+    <div><label>Descripción</label><input id="mt-descripcion" type="text"></div>
     <div>
       <label>Color</label>
       <div class="color-picker" id="mt-color-picker"></div>
@@ -136,49 +420,13 @@
   </div>
 </div>
 
-<!-- ── MODAL NOTA ── -->
-<div class="modal-overlay" id="modal-nota">
-  <div class="modal">
-    <h2 id="modal-nota-titulo">Nueva nota</h2>
-    <div>
-      <label>Título</label>
-      <input id="mn-titulo" type="text" placeholder="Título de la nota">
-    </div>
-    <div>
-      <label>Tema</label>
-      <select id="mn-topic"></select>
-    </div>
-    <div>
-      <label>Tags (separados por coma)</label>
-      <input id="mn-tags" type="text" placeholder="tutela, derechos, python…">
-    </div>
-    <div>
-      <label>Contenido (Markdown)</label>
-      <textarea id="mn-contenido" rows="8"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="cerrarModalNota()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarNota()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── MODAL FLASHCARD ── -->
+<!-- Modal flashcard -->
 <div class="modal-overlay" id="modal-card">
   <div class="modal">
     <h2 id="modal-card-titulo">Nueva flashcard</h2>
-    <div>
-      <label>Tema</label>
-      <select id="mc-topic"></select>
-    </div>
-    <div>
-      <label>Pregunta</label>
-      <textarea id="mc-pregunta" rows="3"></textarea>
-    </div>
-    <div>
-      <label>Respuesta</label>
-      <textarea id="mc-respuesta" rows="4"></textarea>
-    </div>
+    <div><label>Materia</label><select id="mc-materia"></select></div>
+    <div><label>Pregunta</label><textarea id="mc-pregunta" rows="3"></textarea></div>
+    <div><label>Respuesta</label><textarea id="mc-respuesta" rows="4"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="cerrarModalCard()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCard()">Guardar</button>
@@ -186,17 +434,155 @@
   </div>
 </div>
 
+<!-- Modal subir documento -->
+<div class="modal-overlay" id="modal-doc">
+  <div class="modal">
+    <h2>Subir documento</h2>
+    <div><label>Archivo (PDF, TXT, MD, JSON)</label><input id="md-archivo" type="file" accept=".pdf,.txt,.md,.json"></div>
+    <div><label>Título</label><input id="md-titulo" type="text" placeholder="Ej: Guía de tutela — Semana 3"></div>
+    <div>
+      <label>Asociar a</label>
+      <select id="md-nivel" onchange="_docCambiarNivel(this.value)" style="width:100%; margin-bottom:.4rem;">
+        <option value="ninguno">— Sin asociación (documento general) —</option>
+        <option value="programa">Programa</option>
+        <option value="semestre">Semestre</option>
+        <option value="materia">Materia / Clase</option>
+      </select>
+      <select id="md-programa-sel" style="display:none; width:100%;"><option value="">— Seleccioná programa —</option></select>
+      <select id="md-semestre-sel" style="display:none; width:100%;"><option value="">— Seleccioná semestre —</option></select>
+      <select id="docs-materia"    style="display:none; width:100%;"><option value="">— Seleccioná materia —</option></select>
+    </div>
+    <div><label>Tags</label><input id="md-tags" type="text" placeholder="lectura, guia, parcial…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalDoc()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDocumento()">Subir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal visor de documento -->
+<div class="modal-overlay" id="modal-doc-visor">
+  <div class="modal" style="max-width:860px; width:95vw;">
+    <h2 id="mdv-titulo"></h2>
+    <div id="mdv-cuerpo" style="max-height:75dvh; overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarVisorDoc()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo programa -->
+<div class="modal-overlay" id="modal-programa">
+  <div class="modal">
+    <h2 id="modal-prog-titulo">Nuevo programa</h2>
+    <input type="hidden" id="prog-id">
+    <div><label>Nombre del programa</label><input id="prog-nombre" type="text" placeholder="Ej: Derecho, Maestría en IA"></div>
+    <div>
+      <label>Tipo</label>
+      <select id="prog-tipo">
+        <option value="pregrado">Pregrado</option>
+        <option value="posgrado">Posgrado</option>
+        <option value="otro">Otro / Complementario</option>
+      </select>
+    </div>
+    <div><label>Descripción (opcional)</label><input id="prog-descripcion" type="text" placeholder="Universidad, énfasis…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalPrograma()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPrograma()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo semestre -->
+<div class="modal-overlay" id="modal-semestre">
+  <div class="modal">
+    <h2 id="modal-sem-titulo">Nuevo semestre</h2>
+    <input type="hidden" id="sem-id">
+    <input type="hidden" id="sem-programa-id">
+    <div><label>Nombre del semestre</label><input id="sem-nombre" type="text" placeholder="Ej: 2025-1, Primer semestre"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalSemestre()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarSemestre()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal materia del cuaderno -->
+<div class="modal-overlay" id="modal-cuaderno-materia">
+  <div class="modal">
+    <h2 id="modal-cm-titulo">Nueva materia</h2>
+    <input type="hidden" id="cm-id">
+    <input type="hidden" id="cm-semestre-id">
+    <div style="display:flex; gap:.75rem;">
+      <div style="flex:0 0 80px;">
+        <label>Emoji</label>
+        <input id="cm-emoji" type="text" value="📚" style="text-align:center; font-size:1.5rem;">
+      </div>
+      <div style="flex:1">
+        <label>Nombre de la materia</label>
+        <input id="cm-nombre" type="text" placeholder="Ej: Derecho Constitucional">
+      </div>
+    </div>
+    <div>
+      <label>Color identificador</label>
+      <div class="color-picker" id="cm-color-picker"></div>
+      <input type="hidden" id="cm-color" value="#6366f1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalCuadernoMateria()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMateria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva clase -->
+<div class="modal-overlay" id="modal-cuaderno-clase">
+  <div class="modal">
+    <h2>Nueva clase</h2>
+    <input type="hidden" id="cc-materia-id">
+    <div><label>Fecha</label><input id="cc-fecha" type="date"></div>
+    <div><label>Título</label><input id="cc-titulo" type="text" placeholder="Ej: Introducción a la tutela"></div>
+    <div><label>Temas tratados (opcional)</label><input id="cc-temas" type="text" placeholder="Ej: Definición, requisitos, procedencia"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalCuadernoClase()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarClase()">Crear y abrir apuntes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Acciones del cuaderno Cornell -->
+<div class="modal-overlay" id="modal-acciones">
+  <div class="modal" style="max-width:520px; width:95vw;">
+    <div class="modal-top">
+      <h2>⚡ Acciones</h2>
+      <button class="btn-cerrar-modal-rojo" onclick="document.getElementById('modal-acciones').classList.remove('open')" title="Cerrar">✕</button>
+    </div>
+    <div id="cn-modal-acciones-cuerpo" style="max-height:65dvh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- Modal Referencia rápida del cuaderno Cornell -->
+<div class="modal-overlay" id="modal-referencias">
+  <div class="modal" style="max-width:520px; width:95vw;">
+    <div class="modal-top">
+      <h2>📖 Referencia rápida</h2>
+      <button class="btn-cerrar-modal-rojo" onclick="document.getElementById('modal-referencias').classList.remove('open')" title="Cerrar">✕</button>
+    </div>
+    <div id="cn-modal-refs-cuerpo" style="max-height:65dvh; overflow-y:auto;"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
-<script>
-  marked.setOptions({ breaks: true, gfm: true });
-</script>
+<script>marked.setOptions({ breaks: true, gfm: true });</script>
 <script src="/static/js/app.js"></script>
 <script src="/static/js/chat.js"></script>
-<script src="/static/js/temas.js"></script>
-<script src="/static/js/notas.js"></script>
+<script src="/static/js/cuaderno.js"></script>
 <script src="/static/js/flashcards.js"></script>
+<script src="/static/js/documentos.js"></script>
+<script src="/static/js/plan.js"></script>
 <script src="/static/js/dashboard.js"></script>
+<script src="/static/js/sprites.js"></script>
 </body>
 </html>

@@ -1,0 +1,494 @@
+// Módulo Planificador — plan por tema + Q&A + Evaluador
+
+let _planActivo      = null;   // { id, tema, plan_texto }
+let _planHistorial   = [];     // conversación Q&A en memoria
+let _modoEval        = false;  // true = agente Evaluador activo
+let _planGenerando   = false;
+let _examenIniciado  = false;  // Electra: no volver a disparar si ya inició
+let _planToksAcum    = 0;      // tokens acumulados en el chat del plan
+
+// ── Generar plan ─────────────────────────────────────────────────
+
+async function generarPlan() {
+  if (_planGenerando) return;
+
+  const tema      = document.getElementById("plan-tema-input").value.trim();
+  const materiaId = document.getElementById("plan-materia-sel").value || null;
+
+  if (!tema) { toast("Escribí el tema que querés estudiar."); return; }
+
+  _planGenerando = true;
+  const btn = document.getElementById("btn-generar-plan");
+  btn.disabled    = true;
+  btn.textContent = "Generando…";
+
+  // Ocultar historial si estaba visible
+  ocultarHistorial();
+
+  // Indicar carga — el form queda visible mientras espera
+  const formArea = document.getElementById("plan-form-area");
+  formArea.insertAdjacentHTML("afterend",
+    '<p id="plan-loading" style="color:var(--text-muted); font-size:.875rem; margin:.5rem var(--gap);">Atlas está generando los 4 módulos… (puede tardar ~20 s)</p>'
+  );
+
+  try {
+    const data = await api("POST", "/plan/planificador", {
+      tema,
+      materia_id: materiaId ? +materiaId : null,
+    });
+
+    _planActivo     = data;
+    _planHistorial  = [];
+    _modoEval       = false;
+    _examenIniciado = false;
+    _planToksAcum   = 0;
+
+    try {
+      _mostrarPlan(data);
+    } catch (renderErr) {
+      console.error("Error al renderizar plan:", renderErr);
+      toast("El plan se generó pero no pudo mostrarse. Buscalo en Historial.", 5000);
+    }
+
+  } catch (e) {
+    toast(`Error al generar el plan: ${e.message}`, 5000);
+  } finally {
+    document.getElementById("plan-loading")?.remove();
+    btn.disabled    = false;
+    btn.textContent = "Generar plan completo";
+    _planGenerando  = false;
+  }
+}
+
+function _mostrarPlan(data) {
+  const contenido     = document.getElementById("plan-contenido");
+  const fecha         = document.getElementById("plan-fecha");
+  const formArea      = document.getElementById("plan-form-area");
+  const contenidoWrap = document.getElementById("plan-contenido-wrap");
+  const chatMsgs      = document.getElementById("plan-chat-messages");
+  const sesEl         = document.getElementById("plan-tok-session");
+  const sinPlan       = document.getElementById("plan-sin-plan-msg");
+  const chat          = document.getElementById("plan-agentes-chat");
+
+  if (contenido) contenido.innerHTML = marked.parse(data.plan_texto || "");
+  if (fecha) fecha.textContent = "Generado el " + new Date().toLocaleDateString("es-CO", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  }) + (data.materia_nombre && data.materia_nombre !== "—" ? ` · ${data.materia_nombre}` : "");
+
+  if (chatMsgs) chatMsgs.innerHTML = "";
+  _planHistorial = [];
+  _modoEval      = false;
+  _planToksAcum  = 0;
+  if (sesEl) sesEl.textContent = "";
+  _actualizarIndicadorAgente();
+
+  if (formArea)      formArea.style.display      = "none";
+  if (contenidoWrap) contenidoWrap.style.display = "block";
+  if (sinPlan)       sinPlan.style.display        = "none";
+  if (chat)          chat.style.display           = "flex";
+
+  _planTab("plan");
+}
+
+// ── Sub-pestañas del resultado ───────────────────────────────────
+
+function _planTab(tab) {
+  ["plan", "agentes", "calendario"].forEach(t => {
+    const el  = document.getElementById(`plan-tab-${t}`);
+    const btn = document.getElementById(`plan-stab-${t}`);
+    if (!el || !btn) return;
+    const active = t === tab;
+    el.style.display = active ? "flex" : "none";
+    btn.classList.toggle("active", active);
+  });
+  if (tab === "calendario") _renderCalendario();
+}
+
+// ── Calendario de sesiones ───────────────────────────────────────
+
+function _calcularFechas(fechaInicio, totalDias, diasSem) {
+  const fechas = [];
+  if (!diasSem.length || !totalDias) return fechas;
+  const inicio  = fechaInicio ? new Date(fechaInicio + "T00:00:00") : new Date();
+  const cursor  = new Date(inicio);
+  let count = 0, intentos = 0;
+  while (count < totalDias && intentos < 365) {
+    if (diasSem.includes(cursor.getDay())) {
+      fechas.push(new Date(cursor));
+      count++;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+    intentos++;
+  }
+  return fechas;
+}
+
+function _renderCalendario() {
+  const container = document.getElementById("plan-cronogramas-lista") || document.getElementById("plan-tab-calendario");
+  if (!container) return;
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  if (!cronos.length) {
+    container.innerHTML = '<p style="color:var(--text-muted); font-size:.875rem; text-align:center; padding-top:2rem;">Sin cronogramas guardados aún.<br>Generá un plan con el cronograma habilitado.</p>';
+    return;
+  }
+  const hoyStr = new Date().toDateString();
+  container.innerHTML = cronos.map(c => {
+    const fechas = _calcularFechas(c.fechaInicio || "", c.dias || 7, c.diasSem || []);
+    const sesionesHTML = fechas.map((f, i) => {
+      const esHoy  = f.toDateString() === hoyStr;
+      const label  = f.toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short" });
+      return `<div class="cal-sesion${esHoy ? " cal-hoy" : ""}">
+        <span class="cal-num">${i + 1}</span>
+        <span class="cal-fecha">${label}</span>
+        <span class="cal-hora">${c.horaIni}–${c.horaFin}</span>
+      </div>`;
+    }).join("");
+    const fechaInicioLabel = c.fechaInicio
+      ? new Date(c.fechaInicio + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
+      : "Fecha no definida";
+    return `<div class="card" style="margin-bottom:.75rem;">
+      <div style="display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.55rem;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:700; font-size:.9rem; margin-bottom:.15rem;">${c.tema}</div>
+          <div style="font-size:.75rem; color:var(--text-muted);">Desde ${fechaInicioLabel} · ${c.dias} sesiones · ${c.horaIni}–${c.horaFin}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="_eliminarCronograma(${c.id})">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:.2rem;">${sesionesHTML || '<p style="color:var(--text-muted); font-size:.8rem;">Sin fechas calculadas (revisá días seleccionados).</p>'}</div>
+    </div>`;
+  }).join("");
+}
+
+function _eliminarCronograma(id) {
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  localStorage.setItem("atalaya-cronogramas", JSON.stringify(cronos.filter(c => c.id !== id)));
+  _renderCalendario();
+}
+
+// ── Nuevo plan ───────────────────────────────────────────────────
+
+function nuevoPlan() {
+  _planActivo     = null;
+  _planHistorial  = [];
+  _modoEval       = false;
+  _examenIniciado = false;
+  _planToksAcum   = 0;
+
+  // Plan tab: mostrar form, ocultar contenido
+  document.getElementById("plan-form-area").style.display = "";
+  document.getElementById("plan-contenido-wrap").style.display = "none";
+  document.getElementById("plan-tema-input").value = "";
+
+  // Agentes tab: mostrar mensaje "sin plan", ocultar chat
+  const sinPlan = document.getElementById("plan-sin-plan-msg");
+  const chat    = document.getElementById("plan-agentes-chat");
+  if (sinPlan) sinPlan.style.display = "flex";
+  if (chat)    chat.style.display    = "none";
+
+  // Reset token counter
+  const sesEl = document.getElementById("plan-tok-session");
+  if (sesEl) sesEl.textContent = "";
+
+  _planTab("plan");
+  document.getElementById("plan-tema-input").focus();
+}
+
+// ── Indicador de agente activo ───────────────────────────────────
+
+function _actualizarIndicadorAgente() {
+  const badge = document.getElementById("plan-agente-badge");
+  const desc  = document.getElementById("plan-agente-desc");
+  const btn   = document.getElementById("btn-toggle-evaluador");
+  const input = document.getElementById("plan-chat-input");
+  if (!badge) return;
+
+  if (_modoEval) {
+    badge.innerHTML   = '<i class="fi fi-rr-bolt"></i> Electra';
+    badge.className   = "plan-agente-badge plan-agente-eval";
+    if (desc)  desc.textContent  = "Evaluadora — verificando tu comprensión del tema";
+    if (btn)   btn.innerHTML     = '<i class="fi fi-rr-graduation-cap"></i> Volver a Atlas';
+    if (input) input.placeholder = "Respondé las preguntas de Electra…";
+  } else {
+    badge.innerHTML   = '<i class="fi fi-rr-graduation-cap"></i> Atlas';
+    badge.className   = "plan-agente-badge plan-agente-plan";
+    if (desc)  desc.textContent  = "Planificadora — responde dudas sobre el plan";
+    if (btn)   btn.innerHTML     = '<i class="fi fi-rr-bolt"></i> Activar Electra';
+    if (input) input.placeholder = "¿Tenés dudas sobre algún paso del plan?";
+  }
+}
+
+function toggleEvaluador() {
+  if (!_planActivo) return;
+  _modoEval = !_modoEval;
+  _actualizarIndicadorAgente();
+
+  const msgArea = document.getElementById("plan-chat-messages");
+  const aviso   = document.createElement("div");
+  aviso.style.cssText = "font-size:.78rem; color:var(--text-muted); text-align:center; padding:.3rem 0;";
+  aviso.textContent   = _modoEval
+    ? "— Agente Electra (evaluadora) activada —"
+    : "— Volviste a Atlas (planificadora) —";
+  msgArea.appendChild(aviso);
+  msgArea.scrollTop = msgArea.scrollHeight;
+
+  // Solo dispara el examen la primera vez que se activa Electra
+  if (_modoEval && !_examenIniciado) {
+    _examenIniciado = true;
+    _dispararMensajeEvaluador();
+  }
+
+  document.getElementById("plan-chat-input").focus();
+}
+
+async function _dispararMensajeEvaluador() {
+  // Envía un mensaje silencioso para que el Evaluador se presente y empiece
+  const evento = new Event("submit");
+  const inputReal = document.getElementById("plan-chat-input");
+  const valAnterior = inputReal.value;
+  inputReal.value = "Comenzá la evaluación.";
+  document.getElementById("plan-chat-form").dispatchEvent(evento);
+  // el form limpia el input; restauramos nada (era vacío antes)
+  void valAnterior;
+}
+
+// ── Chat Q&A ─────────────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btn-generar-plan");
+  if (btn) btn.addEventListener("click", generarPlan);
+
+  const form = document.getElementById("plan-chat-form");
+  if (form) form.addEventListener("submit", _enviarPregunta);
+
+  // Contador de tokens del chat del plan
+  const planInput    = document.getElementById("plan-chat-input");
+  const planTokCount = document.getElementById("plan-tok-count");
+  if (planInput && planTokCount) {
+    planInput.addEventListener("input", () => {
+      const est = Math.round(planInput.value.length / 4);
+      planTokCount.textContent = est > 0 ? `~${est} tok` : "";
+    });
+  }
+
+  // Iniciar notificaciones programadas (si hay permiso)
+  _iniciarNotificaciones();
+});
+
+async function _enviarPregunta(e) {
+  e.preventDefault();
+  if (!_planActivo) return;
+
+  const input   = document.getElementById("plan-chat-input");
+  const texto   = input.value.trim();
+  if (!texto) return;
+  input.value   = "";
+
+  const msgArea = document.getElementById("plan-chat-messages");
+
+  // Burbuja usuario con avatar
+  _planBurbuja(msgArea, "user", texto);
+
+  // Burbuja asistente (vacía con cursor)
+  const asstDiv = _planBurbuja(msgArea, "assistant", "");
+  const cursor = document.createElement("span");
+  cursor.className  = "cursor-blink";
+  cursor.textContent = "▍";
+  asstDiv.appendChild(cursor);
+  msgArea.scrollTop = msgArea.scrollHeight;
+
+  let acumulado = "";
+
+  try {
+    const resp = await fetch("/plan/planificador/chat/stream", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan_id:   _planActivo.id,
+        mensaje:   texto,
+        historial: _planHistorial.slice(-14),  // últimos 7 turnos
+        modo:      _modoEval ? "evaluador" : "chat",
+      }),
+    });
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer    = "";
+    let terminado = false;
+
+    while (!terminado) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lineas = buffer.split("\n");
+      buffer = lineas.pop();
+
+      for (const linea of lineas) {
+        if (!linea.startsWith("data: ")) continue;
+        const payload = linea.slice(6).trim();
+        if (payload === "[DONE]") { terminado = true; break; }
+        try {
+          acumulado += JSON.parse(payload);
+          asstDiv.textContent = acumulado;
+          asstDiv.appendChild(cursor);
+          msgArea.scrollTop = msgArea.scrollHeight;
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    acumulado = "Error al conectar con Shaula.";
+    console.error(err);
+  }
+
+  cursor.remove();
+  asstDiv.innerHTML = marked.parse(acumulado);
+  msgArea.scrollTop = msgArea.scrollHeight;
+
+  // Historial en memoria
+  _planHistorial.push(
+    { role: "user",      content: texto },
+    { role: "assistant", content: acumulado },
+  );
+
+  // Contador de tokens
+  _planToksAcum += Math.round((texto.length + acumulado.length) / 4);
+  const tokEl = document.getElementById("plan-tok-count");
+  if (tokEl) tokEl.textContent = "";
+  const sesEl = document.getElementById("plan-tok-session");
+  if (sesEl && _planToksAcum > 0) sesEl.textContent = `Sesión: ~${_planToksAcum} tokens`;
+}
+
+// ── Helper burbuja con avatar para el chat del plan ───────────────
+
+function _planBurbuja(msgArea, rol, contenido) {
+  const row = document.createElement("div");
+  row.className = `msg-row ${rol}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  if (rol === "user") {
+    avatar.innerHTML = _avatarImg("aldebaran", "fi-rr-user");
+  } else {
+    avatar.innerHTML = _modoEval
+      ? _avatarImg("electra", "fi-rr-bolt")
+      : _avatarImg("atlas", "fi-rr-graduation-cap");
+  }
+
+  const div = document.createElement("div");
+  div.className = `msg ${rol}`;
+  if (contenido) div.textContent = contenido;
+
+  row.appendChild(avatar);
+  row.appendChild(div);
+  msgArea.appendChild(row);
+  msgArea.scrollTop = msgArea.scrollHeight;
+  return div;
+}
+
+// ── Historial de planes guardados ────────────────────────────────
+
+async function verHistorialPlanes() {
+  const area  = document.getElementById("plan-historial-area");
+  const lista = document.getElementById("plan-historial-lista");
+
+  area.style.display  = "block";
+  lista.innerHTML     = '<p style="color:var(--text-muted); font-size:.85rem;">Cargando…</p>';
+
+  try {
+    const planes = await api("GET", "/plan/planificador/planes");
+    if (!planes.length) {
+      lista.innerHTML = '<p style="color:var(--text-muted); font-size:.85rem;">Sin planes guardados todavía.</p>';
+      return;
+    }
+    lista.innerHTML = planes.map(p => `
+      <div class="card" style="display:flex; align-items:center; gap:.75rem; padding:.6rem .8rem; cursor:pointer;"
+           onclick="restaurarPlan(${p.id})">
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.tema}</div>
+          <div style="font-size:.75rem; color:var(--text-muted);">${p.materia_nombre} · ${p.creado_at.slice(0,10)}</div>
+        </div>
+        <span style="font-size:.75rem; color:var(--accent);">Ver ›</span>
+      </div>`).join("");
+  } catch (e) {
+    lista.innerHTML = `<p style="color:var(--danger); font-size:.85rem;">Error: ${e.message}</p>`;
+  }
+}
+
+function ocultarHistorial() {
+  const area = document.getElementById("plan-historial-area");
+  if (area) area.style.display = "none";
+}
+
+async function restaurarPlan(planId) {
+  ocultarHistorial();
+  try {
+    const data = await api("GET", `/plan/planificador/planes/${planId}`);
+    _planActivo     = data;
+    _planHistorial  = [];
+    _modoEval       = false;
+    _examenIniciado = false;
+    _planToksAcum   = 0;
+    _actualizarIndicadorAgente();
+    _mostrarPlan(data);
+  } catch (e) {
+    // Restaurar visibilidad del formulario si algo falló
+    const formArea      = document.getElementById("plan-form-area");
+    const contenidoWrap = document.getElementById("plan-contenido-wrap");
+    if (formArea)      formArea.style.display      = "";
+    if (contenidoWrap) contenidoWrap.style.display = "none";
+    toast(`Error al cargar el plan: ${e.message}`, 4000);
+  }
+}
+
+// ── Cronograma y notificaciones web ──────────────────────────────
+
+function _guardarCronograma(tema) {
+  const temaInput   = tema || document.getElementById("plan-sched-tema")?.value.trim() || "";
+  const dias        = parseInt(document.getElementById("plan-sched-dias")?.value) || 7;
+  const fechaInicio = document.getElementById("plan-sched-fecha")?.value || "";
+  const horaIni     = document.getElementById("plan-sched-hora-ini")?.value || "08:00";
+  const horaFin     = document.getElementById("plan-sched-hora-fin")?.value || "09:00";
+  const diasSem     = [...document.querySelectorAll("[name='plan-sched-dia']:checked")]
+                       .map(el => parseInt(el.value));
+
+  if (!temaInput) { toast("Escribí el tema del cronograma"); return; }
+  if (!diasSem.length) { toast("Seleccioná al menos un día de la semana"); return; }
+
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  const nuevo  = { id: Date.now(), tema: temaInput, dias, fechaInicio, horaIni, horaFin, diasSem, creado: new Date().toISOString() };
+  cronos.push(nuevo);
+  localStorage.setItem("atalaya-cronogramas", JSON.stringify(cronos));
+  _programarNotifHoy(nuevo);
+  toast(`Cronograma guardado: ${dias} sesiones a las ${horaIni}`, 3000);
+  _renderCalendario();
+
+  // Limpiar el campo de tema del calendario
+  const temaEl = document.getElementById("plan-sched-tema");
+  if (temaEl) temaEl.value = "";
+}
+
+function _programarNotifHoy(c) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const ahora = new Date();
+  if (!c.diasSem.includes(ahora.getDay())) return;
+  const [h, m]  = c.horaIni.split(":").map(Number);
+  const hora    = new Date(); hora.setHours(h, m, 0, 0);
+  const delay   = hora - ahora;
+  if (delay <= 0) return;
+  setTimeout(() => {
+    new Notification("📚 Atalaya Pléyades", {
+      body: `Es hora de estudiar: ${c.tema}`,
+      tag:  `atalaya-${c.id}`,
+    });
+  }, delay);
+}
+
+function _iniciarNotificaciones() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const cronos = JSON.parse(localStorage.getItem("atalaya-cronogramas") || "[]");
+  cronos.forEach(_programarNotifHoy);
+}
+
+function _avatarImg(nombre, icon) {
+  return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
+}

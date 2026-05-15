@@ -57,27 +57,32 @@ def racha_estudio():
     return {"racha_dias": racha}
 
 
-@router.get("/progreso/{topic_id}")
-def progreso_topic(topic_id: int):
+@router.get("/progreso/{materia_id}")
+def progreso_materia(materia_id: int):
     with db() as conn:
-        topic = conn.execute("SELECT nombre FROM topics WHERE id = ?", (topic_id,)).fetchone()
-        if topic is None:
-            raise HTTPException(status_code=404, detail="Topic no encontrado")
+        materia = conn.execute("SELECT nombre, emoji FROM materias WHERE id = ?", (materia_id,)).fetchone()
+        if materia is None:
+            raise HTTPException(status_code=404, detail="Materia no encontrada")
 
-        notas = conn.execute(
-            "SELECT COUNT(*) FROM notas WHERE topic_id = ?", (topic_id,)
+        clases = conn.execute(
+            "SELECT COUNT(*) FROM clases WHERE materia_id = ?", (materia_id,)
         ).fetchone()[0]
         cards_total = conn.execute(
-            "SELECT COUNT(*) FROM flashcards WHERE topic_id = ?", (topic_id,)
+            "SELECT COUNT(*) FROM flashcards WHERE materia_id = ?", (materia_id,)
         ).fetchone()[0]
         cards_dominadas = conn.execute(
-            "SELECT COUNT(*) FROM flashcards WHERE topic_id = ? AND intervalo >= 21", (topic_id,)
+            "SELECT COUNT(*) FROM flashcards WHERE materia_id = ? AND intervalo >= 21", (materia_id,)
+        ).fetchone()[0]
+        docs = conn.execute(
+            "SELECT COUNT(*) FROM documentos WHERE materia_id = ?", (materia_id,)
         ).fetchone()[0]
 
     return {
-        "topic_id": topic_id,
-        "topic_nombre": topic["nombre"],
-        "notas": notas,
+        "materia_id": materia_id,
+        "materia_nombre": materia["nombre"],
+        "materia_emoji": materia["emoji"] or "📚",
+        "clases": clases,
+        "documentos": docs,
         "flashcards_total": cards_total,
         "flashcards_dominadas": cards_dominadas,
         "porcentaje_dominio": round(cards_dominadas / cards_total * 100, 1) if cards_total else 0,

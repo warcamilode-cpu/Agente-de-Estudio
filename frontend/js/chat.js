@@ -14,12 +14,18 @@ nuevaSesionChat();
 
 async function nuevaSesionChat() {
   const data = await api("POST", "/ai/chat/nueva-sesion");
-  _sessionId     = data.session_id;
-  _primerMensaje = true;
+  _sessionId        = data.session_id;
+  _primerMensaje    = true;
+  _tokensAcumulados = 0;
+  const sesEl = document.getElementById("chat-tok-session");
+  if (sesEl) sesEl.textContent = "";
   mensajesEl.innerHTML = `
-    <div class="msg assistant shaula-intro">
-      Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
-      Seleccioná un tema y preguntame lo que necesites.
+    <div class="msg-row assistant">
+      <div class="msg-avatar">${_avatarImg("shaula", "fi-rr-star")}</div>
+      <div class="msg assistant shaula-intro">
+        Hola, soy <strong>Shaula</strong>, tu tutora de estudio.
+        Seleccioná un tema y preguntame lo que necesites.
+      </div>
     </div>`;
   document.getElementById("chat-sesion-titulo").textContent = "Nueva sesión";
 }
@@ -87,7 +93,7 @@ chatForm.addEventListener("submit", async e => {
 
   _agregarMensaje("user", texto);
 
-  const topicId = document.getElementById("chat-topic").value || null;
+  const materiaId = document.getElementById("chat-materia").value || null;
   const burbuja = _agregarMensaje("assistant", "");
 
   const cursor = document.createElement("span");
@@ -104,7 +110,7 @@ chatForm.addEventListener("submit", async e => {
       body: JSON.stringify({
         session_id: _sessionId,
         message:    texto,
-        topic_id:   topicId ? +topicId : null,
+        materia_id: materiaId ? +materiaId : null,
       }),
     });
 
@@ -140,6 +146,9 @@ chatForm.addEventListener("submit", async e => {
   burbuja.innerHTML = marked.parse(acumulado);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
 
+  _registrarTokens(texto, acumulado);
+  document.getElementById("chat-token-count").textContent = "";
+
   // Actualiza el título de la barra con el primer mensaje
   if (_primerMensaje) {
     _primerMensaje = false;
@@ -148,9 +157,47 @@ chatForm.addEventListener("submit", async e => {
   }
 });
 
+// ── Contador de tokens ────────────────────────────────────────────
+
+let _tokensAcumulados = 0;
+
+(function _initTokenCounter() {
+  const counter = document.getElementById("chat-token-count");
+  if (!counter) return;
+
+  chatInput.addEventListener("input", () => {
+    const estimado = Math.round(chatInput.value.length / 4);
+    counter.textContent = estimado > 0 ? `~${estimado} tok` : "";
+  });
+})();
+
+function _registrarTokens(textoUsuario, textoAsistente) {
+  const tokUser = Math.round(textoUsuario.length / 4);
+  const tokAsis = Math.round(textoAsistente.length / 4);
+  _tokensAcumulados += tokUser + tokAsis;
+  const counter = document.getElementById("chat-token-count");
+  if (counter) {
+    counter.textContent = "";
+    counter.title = `Sesión: ~${_tokensAcumulados} tokens acumulados`;
+  }
+  const sesEl = document.getElementById("chat-tok-session");
+  if (sesEl && _tokensAcumulados > 0) {
+    sesEl.textContent = `Sesión: ~${_tokensAcumulados} tokens`;
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────
 
 function _agregarMensaje(rol, contenido) {
+  const row = document.createElement("div");
+  row.className = `msg-row ${rol}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  avatar.innerHTML = rol === "user"
+    ? _avatarImg("aldebaran", "fi-rr-user")
+    : _avatarImg("shaula", "fi-rr-star");
+
   const div = document.createElement("div");
   div.className = `msg ${rol}`;
   if (contenido) {
@@ -158,13 +205,21 @@ function _agregarMensaje(rol, contenido) {
       ? marked.parse(contenido)
       : _escaparHTML(contenido);
   }
-  mensajesEl.appendChild(div);
+
+  row.appendChild(avatar);
+  row.appendChild(div);
+  mensajesEl.appendChild(row);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
   return div;
 }
 
 function _escaparHTML(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Retorna HTML de avatar con imagen + fallback a ícono fi si la imagen no existe
+function _avatarImg(nombre, icon) {
+  return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
 }
 
 function _esc(str) {
