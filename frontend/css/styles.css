@@ -1627,20 +1627,24 @@ label {
 .sidebar.collapsed .agentes-titulo { display: none; }
 
 .agentes-sprites {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: space-around;
-  gap: 2px;
-  padding: .2rem .3rem .4rem;
+  position: relative;
   flex: 1;
   overflow: hidden;
 }
-.sidebar.collapsed .agentes-sprites {
+
+.sprite-wrap {
+  position: absolute;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: .3rem .2rem;
+  gap: 1px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  border-radius: 6px;
+  padding: 2px;
+  transition: background .15s;
+  width: 52px;
 }
 .sidebar.collapsed .sprite-label { display: none; }
 
@@ -1673,17 +1677,9 @@ label {
   max-height: 40px;
   object-fit: contain;
   image-rendering: auto;
-  animation: sprite-idle 2.4s ease-in-out infinite;
   pointer-events: none;
   display: block;
-}
-.sprite-wrap:nth-child(2) .sprite-img { animation-delay: .4s; }
-.sprite-wrap:nth-child(3) .sprite-img { animation-delay: .8s; }
-.sprite-wrap:nth-child(4) .sprite-img { animation-delay: 1.2s; }
-
-@keyframes sprite-idle {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-4px); }
+  transition: transform .1s;
 }
 
 .sprite-label {

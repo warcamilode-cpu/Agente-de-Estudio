@@ -1,20 +1,153 @@
-// ── Sprites de agentes — drag & click ────────────────────────────
+// ── Sprites de agentes — movimiento libre + drag ─────────────────
 
 (function () {
-  const SNAP_THRESHOLD = 60; // px desde el sidebar para volver a anclarse
+  const SPRITE_W    = 52;
+  const SPRITE_H    = 58;   // img 40px + label ~12px + padding
+  const SPEED_MIN   = 0.4;
+  const SPEED_MAX   = 1.1;
+  const BOUNCE_DAMP = 1.0;  // sin pérdida de velocidad al rebotar
+
+  const agentes = [];
+  let animFrame = null;
+  let paused    = false;
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+  function randSpeed()    { return rand(SPEED_MIN, SPEED_MAX) * (Math.random() < .5 ? 1 : -1); }
 
   function iniciarSprites() {
-    const wraps = document.querySelectorAll(".sprite-wrap");
-    wraps.forEach(wrap => {
-      wrap.addEventListener("mousedown",  e => iniciarDrag(e, wrap));
-      wrap.addEventListener("touchstart", e => iniciarDrag(e, wrap), { passive: false });
-      wrap.addEventListener("click", e => {
-        if (!wrap._dragged) navegarAgente(wrap.dataset.tab);
+    const contenedor = document.getElementById("agentes-sprites");
+    if (!contenedor) return;
+
+    const wraps = contenedor.querySelectorAll(".sprite-wrap");
+    wraps.forEach((wrap, i) => {
+      const bounds = contenedor.getBoundingClientRect();
+      const maxX   = Math.max(0, bounds.width  - SPRITE_W);
+      const maxY   = Math.max(0, bounds.height - SPRITE_H);
+
+      const agente = {
+        el:   wrap,
+        img:  wrap.querySelector(".sprite-img"),
+        x:    rand(0, maxX || 10),
+        y:    rand(0, maxY || 10),
+        vx:   randSpeed(),
+        vy:   randSpeed(),
+        tab:  wrap.dataset.tab,
+        dragging: false,
+      };
+
+      wrap.style.left = agente.x + "px";
+      wrap.style.top  = agente.y + "px";
+
+      wrap.addEventListener("mousedown",  e => iniciarDrag(e, agente, contenedor));
+      wrap.addEventListener("touchstart", e => iniciarDrag(e, agente, contenedor), { passive: false });
+      wrap.addEventListener("click", () => {
+        if (!agente._dragged) navegarAgente(agente.tab);
       });
+
+      agentes.push(agente);
     });
+
     actualizarActivo(document.querySelector(".nav-item.active")?.dataset.tab);
+    iniciarLoop(contenedor);
+    iniciarResize();
   }
 
+  // ── Loop de movimiento ───────────────────────────────────────────
+  function iniciarLoop(contenedor) {
+    function tick() {
+      if (!paused) moverTodos(contenedor);
+      animFrame = requestAnimationFrame(tick);
+    }
+    animFrame = requestAnimationFrame(tick);
+  }
+
+  function moverTodos(contenedor) {
+    const bounds = contenedor.getBoundingClientRect();
+    const maxX   = bounds.width  - SPRITE_W;
+    const maxY   = bounds.height - SPRITE_H;
+
+    agentes.forEach(a => {
+      if (a.dragging) return;
+
+      a.x += a.vx;
+      a.y += a.vy;
+
+      // Rebotar en paredes X
+      if (a.x <= 0)         { a.x = 0;    a.vx =  Math.abs(a.vx) * BOUNCE_DAMP; }
+      if (a.x >= maxX)      { a.x = maxX; a.vx = -Math.abs(a.vx) * BOUNCE_DAMP; }
+
+      // Rebotar en paredes Y
+      if (a.y <= 0)         { a.y = 0;    a.vy =  Math.abs(a.vy) * BOUNCE_DAMP; }
+      if (a.y >= maxY)      { a.y = maxY; a.vy = -Math.abs(a.vy) * BOUNCE_DAMP; }
+
+      a.el.style.left = a.x + "px";
+      a.el.style.top  = a.y + "px";
+
+      // Voltear imagen según dirección horizontal
+      if (a.img) {
+        a.img.style.transform = a.vx < 0 ? "scaleX(-1)" : "scaleX(1)";
+      }
+    });
+  }
+
+  // ── Drag dentro del contenedor ──────────────────────────────────
+  function iniciarDrag(e, agente, contenedor) {
+    e.preventDefault();
+    agente._dragged  = false;
+    agente.dragging  = true;
+    paused = false;
+
+    const isTouch  = e.type === "touchstart";
+    const pos0     = isTouch ? e.touches[0] : e;
+    const rect     = contenedor.getBoundingClientRect();
+    const offsetX  = pos0.clientX - rect.left - agente.x;
+    const offsetY  = pos0.clientY - rect.top  - agente.y;
+
+    let lastX = agente.x, lastY = agente.y;
+    let lastT = performance.now();
+
+    function onMove(ev) {
+      agente._dragged = true;
+      const pos  = isTouch ? ev.touches[0] : ev;
+      const nowT = performance.now();
+      const newX = Math.max(0, Math.min(rect.width  - SPRITE_W, pos.clientX - rect.left - offsetX));
+      const newY = Math.max(0, Math.min(rect.height - SPRITE_H, pos.clientY - rect.top  - offsetY));
+
+      const dt = Math.max(1, nowT - lastT);
+      agente.vx = (newX - lastX) / dt * 16;
+      agente.vy = (newY - lastY) / dt * 16;
+      lastX = newX; lastY = newY; lastT = nowT;
+
+      agente.x = newX;
+      agente.y = newY;
+      agente.el.style.left = newX + "px";
+      agente.el.style.top  = newY + "px";
+    }
+
+    function onUp() {
+      agente.dragging = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend",  onUp);
+
+      // Limitar velocidad al soltar
+      const maxV = SPEED_MAX * 2.5;
+      agente.vx = Math.max(-maxV, Math.min(maxV, agente.vx));
+      agente.vy = Math.max(-maxV, Math.min(maxV, agente.vy));
+      if (Math.abs(agente.vx) < SPEED_MIN) agente.vx = SPEED_MIN * Math.sign(agente.vx || 1);
+      if (Math.abs(agente.vy) < SPEED_MIN) agente.vy = SPEED_MIN * Math.sign(agente.vy || 1);
+
+      setTimeout(() => { agente._dragged = false; }, 10);
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend",  onUp);
+  }
+
+  // ── Navegación y estado activo ───────────────────────────────────
   function navegarAgente(tab) {
     if (!tab) return;
     const btn = document.querySelector(`.nav-item[data-tab="${tab}"]`);
@@ -22,189 +155,49 @@
   }
 
   function actualizarActivo(tabActual) {
-    document.querySelectorAll(".sprite-wrap, .sprite-floating").forEach(el => {
-      el.classList.toggle("active-agent", el.dataset.tab === tabActual);
-    });
+    agentes.forEach(a => a.el.classList.toggle("active-agent", a.tab === tabActual));
   }
 
-  // Escuchar cambios de tab para resaltar el agente activo
   document.addEventListener("tabchange", e => actualizarActivo(e.detail));
 
-  function iniciarDrag(e, wrap) {
-    e.preventDefault();
-    wrap._dragged = false;
-
-    const isTouch = e.type === "touchstart";
-    const startPos = isTouch ? e.touches[0] : e;
-    const startX = startPos.clientX;
-    const startY = startPos.clientY;
-
-    let flotante = null;
-    let movido = false;
-
-    function onMove(ev) {
-      const pos = isTouch ? ev.touches[0] : ev;
-      const dx = Math.abs(pos.clientX - startX);
-      const dy = Math.abs(pos.clientY - startY);
-
-      if (!movido && dx < 4 && dy < 4) return;
-      movido = true;
-      wrap._dragged = true;
-
-      if (!flotante) flotante = crearFlotante(wrap, pos.clientX, pos.clientY);
-
-      flotante.style.left = (pos.clientX - flotante._ox) + "px";
-      flotante.style.top  = (pos.clientY - flotante._oy) + "px";
-    }
-
-    function onUp(ev) {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",   onUp);
-      document.removeEventListener("touchmove", onMove);
-      document.removeEventListener("touchend",  onUp);
-
-      if (!flotante) {
-        // fue un click sin arrastre
-        setTimeout(() => { wrap._dragged = false; }, 10);
-        return;
-      }
-
-      const pos = isTouch ? ev.changedTouches[0] : ev;
-      const sidebar = document.getElementById("sidebar");
-      const rect = sidebar.getBoundingClientRect();
-
-      if (pos.clientX < rect.right + SNAP_THRESHOLD) {
-        // vuelve al sidebar
-        flotante.remove();
-        flotante = null;
-      } else {
-        // queda flotando — hacerlo permanente con doble-click para volver
-        flotante.title = "Doble clic para volver al sidebar";
-        flotante.addEventListener("dblclick", () => flotante.remove());
-        flotante.addEventListener("mousedown",  ev2 => arrastrarFlotante(ev2, flotante));
-        flotante.addEventListener("touchstart", ev2 => arrastrarFlotante(ev2, flotante), { passive: false });
-        flotante.addEventListener("click", () => {
-          if (!flotante._dragged) navegarAgente(flotante.dataset.tab);
-        });
-      }
-      setTimeout(() => { wrap._dragged = false; }, 10);
-    }
-
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",   onUp);
-    document.addEventListener("touchmove", onMove, { passive: false });
-    document.addEventListener("touchend",  onUp);
-  }
-
-  function crearFlotante(wrap, cx, cy) {
-    const img   = wrap.querySelector(".sprite-img");
-    const label = wrap.querySelector(".sprite-label");
-    const rect  = wrap.getBoundingClientRect();
-
-    const el = document.createElement("div");
-    el.className  = "sprite-floating";
-    el.dataset.tab    = wrap.dataset.tab;
-    el.dataset.nombre = wrap.dataset.nombre;
-    el._dragged = false;
-
-    const imgEl = document.createElement("img");
-    imgEl.src       = img.src;
-    imgEl.alt       = img.alt;
-    imgEl.className = "sprite-img";
-
-    const lblEl = document.createElement("span");
-    lblEl.className   = "sprite-label";
-    lblEl.textContent = label?.textContent || wrap.dataset.nombre;
-
-    el.appendChild(imgEl);
-    el.appendChild(lblEl);
-
-    el._ox = cx - rect.left;
-    el._oy = cy - rect.top;
-    el.style.left = (cx - el._ox) + "px";
-    el.style.top  = (cy - el._oy) + "px";
-
-    document.body.appendChild(el);
-    return el;
-  }
-
-  function arrastrarFlotante(e, flotante) {
-    e.preventDefault();
-    flotante._dragged = false;
-    const isTouch = e.type === "touchstart";
-    const pos0 = isTouch ? e.touches[0] : e;
-    const ox = pos0.clientX - flotante.getBoundingClientRect().left;
-    const oy = pos0.clientY - flotante.getBoundingClientRect().top;
-
-    function onMove(ev) {
-      flotante._dragged = true;
-      const pos = isTouch ? ev.touches[0] : ev;
-      flotante.style.left = (pos.clientX - ox) + "px";
-      flotante.style.top  = (pos.clientY - oy) + "px";
-    }
-    function onUp() {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",   onUp);
-      document.removeEventListener("touchmove", onMove);
-      document.removeEventListener("touchend",  onUp);
-      setTimeout(() => { flotante._dragged = false; }, 10);
-    }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",   onUp);
-    document.addEventListener("touchmove", onMove, { passive: false });
-    document.addEventListener("touchend",  onUp);
-  }
-
-  // ── Resize del panel ────────────────────────────────────────────
+  // ── Resize del panel ─────────────────────────────────────────────
   function iniciarResize() {
     const handle = document.getElementById("agentes-resize-handle");
     const panel  = document.getElementById("agentes-panel");
     if (!handle || !panel) return;
 
-    const MIN_H = 88;
-    const MAX_H = 340;
+    const MIN_H = 88, MAX_H = 340;
 
-    handle.addEventListener("mousedown", e => {
-      e.preventDefault();
-      const startY    = e.clientY;
-      const startH    = panel.getBoundingClientRect().height;
-
+    function doResize(startY, startH, getMoveY) {
       function onMove(ev) {
-        const delta = startY - ev.clientY;
-        const newH  = Math.min(MAX_H, Math.max(MIN_H, startH + delta));
-        panel.style.height = newH + "px";
+        const delta = startY - getMoveY(ev);
+        panel.style.height = Math.min(MAX_H, Math.max(MIN_H, startH + delta)) + "px";
       }
       function onUp() {
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup",   onUp);
-      }
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup",   onUp);
-    });
-
-    handle.addEventListener("touchstart", e => {
-      e.preventDefault();
-      const startY = e.touches[0].clientY;
-      const startH = panel.getBoundingClientRect().height;
-
-      function onMove(ev) {
-        const delta = startY - ev.touches[0].clientY;
-        const newH  = Math.min(MAX_H, Math.max(MIN_H, startH + delta));
-        panel.style.height = newH + "px";
-      }
-      function onUp() {
         document.removeEventListener("touchmove", onMove);
         document.removeEventListener("touchend",  onUp);
       }
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup",   onUp);
       document.addEventListener("touchmove", onMove, { passive: false });
       document.addEventListener("touchend",  onUp);
+    }
+
+    handle.addEventListener("mousedown", e => {
+      e.preventDefault();
+      doResize(e.clientY, panel.getBoundingClientRect().height, ev => ev.clientY);
+    });
+    handle.addEventListener("touchstart", e => {
+      e.preventDefault();
+      doResize(e.touches[0].clientY, panel.getBoundingClientRect().height, ev => ev.touches[0].clientY);
     }, { passive: false });
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => { iniciarSprites(); iniciarResize(); });
+    document.addEventListener("DOMContentLoaded", iniciarSprites);
   } else {
     iniciarSprites();
-    iniciarResize();
   }
 })();
