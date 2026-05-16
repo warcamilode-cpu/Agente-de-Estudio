@@ -1,8 +1,30 @@
 from datetime import date
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from database.connection import db
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+class SesionIn(BaseModel):
+    tipo: str                      # "chat" | "flashcards" | "notas"
+    duracion_seg: int
+    materia_id: int | None = None
+    cards_revisadas: int = 0
+    cards_correctas: int = 0
+
+
+@router.post("/sesion", status_code=201)
+def registrar_sesion(body: SesionIn):
+    with db() as conn:
+        cur = conn.execute(
+            """INSERT INTO sesiones_estudio
+               (materia_id, tipo, duracion_seg, cards_revisadas, cards_correctas)
+               VALUES (?,?,?,?,?)""",
+            (body.materia_id, body.tipo, body.duracion_seg,
+             body.cards_revisadas, body.cards_correctas),
+        )
+    return {"id": cur.lastrowid, "registrado": True}
 
 
 @router.get("/resumen")

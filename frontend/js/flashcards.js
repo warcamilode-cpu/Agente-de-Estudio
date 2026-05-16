@@ -3,6 +3,8 @@
 let _cardEditandoId = null;
 let _pendientes = [];
 let _pendienteIdx = 0;
+let _repasoInicio = null;
+let _repasoCorrectas = 0;
 
 // ── Carga lista ──────────────────────────────────────────────────
 async function cargarFlashcards() {
@@ -98,7 +100,9 @@ async function iniciarRepaso() {
 
   if (!_pendientes.length) { toast("No hay cards pendientes hoy 🎉"); return; }
 
-  _pendienteIdx = 0;
+  _pendienteIdx    = 0;
+  _repasoInicio    = Date.now();
+  _repasoCorrectas = 0;
   document.getElementById("fc-lista").style.display = "none";
   document.getElementById("fc-repaso").style.display = "flex";
   mostrarCardActual();
@@ -128,11 +132,18 @@ function fcFlip() {
 async function fcCalificar(cal) {
   const card = _pendientes[_pendienteIdx];
   await api("POST", `/flashcards/${card.id}/respuesta`, { calificacion: cal });
+  if (cal >= 3) _repasoCorrectas++;
   _pendienteIdx++;
   mostrarCardActual();
 }
 
 function fcSalirRepaso() {
+  if (_repasoInicio && _pendienteIdx > 0) {
+    const duracion  = Math.round((Date.now() - _repasoInicio) / 1000);
+    const materiaId = document.getElementById("fc-filtro-materia").value || null;
+    registrarSesion("flashcards", duracion, _pendienteIdx, _repasoCorrectas, materiaId ? parseInt(materiaId) : null);
+  }
+  _repasoInicio = null;
   document.getElementById("fc-repaso").style.display = "none";
   document.getElementById("fc-lista").style.display  = "flex";
   cargarFlashcards();

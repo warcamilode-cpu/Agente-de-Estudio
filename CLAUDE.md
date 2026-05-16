@@ -331,7 +331,17 @@ sudo systemctl status atalaya   # verificar
 - [ ] RAG semántico con bge-m3 para Maia (Fase 2)
 - [ ] Agente de transcripción con Whisper.cpp medium (Fase 3)
 - [ ] Voz conversacional con Kokoro TTS (Fase 4)
-- [ ] Registrar sesiones de estudio desde el frontend
+- [ ] Búsqueda semántica con sqlite-vec en context_builder (reemplaza BM25)
+- [ ] Tests backend: test_srs_engine.py, test_dashboard.py, test_extractor.py
+- [ ] Rate limiting con slowapi + exception handler global en main.py
+- [ ] Indicador "escribiendo…" en chat.js y plan.js
+- [ ] Unificar topics y materias: materia_id en notas, filtro en notas_router
+
+### Completado recientemente ✅
+- [x] Registrar sesiones de estudio desde el frontend
+  - `POST /dashboard/sesion` — recibe tipo, duracion_seg, materia_id, cards_revisadas, cards_correctas
+  - `registrarSesion()` en dashboard.js llamada al salir del repaso de flashcards
+  - flashcards.js mide tiempo y cuenta correctas (cal >= 3) al finalizar el repaso
 
 ---
 

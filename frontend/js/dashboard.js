@@ -55,6 +55,12 @@ async function cargarDashboard() {
   }));
 }
 
+async function registrarSesion(tipo, duracion_seg, cards_revisadas = 0, cards_correctas = 0, materia_id = null) {
+  try {
+    await api("POST", "/dashboard/sesion", { tipo, duracion_seg, cards_revisadas, cards_correctas, materia_id });
+  } catch { /* no interrumpir el flujo si falla el registro */ }
+}
+
 function _formatearTiempo(seg) {
   if (seg < 60) return `${seg}s`;
   const min = Math.floor(seg / 60);
