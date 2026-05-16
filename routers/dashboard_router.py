@@ -79,6 +79,39 @@ def racha_estudio():
     return {"racha_dias": racha}
 
 
+@router.post("/backup", status_code=201)
+def crear_backup(retener: int = 7):
+    """Crea un backup manual de la DB."""
+    from services.backup import hacer_backup
+    ruta = hacer_backup(retener=retener)
+    if ruta is None:
+        raise HTTPException(status_code=503, detail="Base de datos no encontrada")
+    return {"backup": ruta.name, "ruta": str(ruta)}
+
+
+@router.get("/metricas")
+def metricas_tokens(dias: int = 30):
+    """Uso de tokens LLM en los últimos N días."""
+    with db() as conn:
+        row = conn.execute(
+            """SELECT COUNT(*) AS llamadas,
+                      COALESCE(SUM(tokens_in), 0)  AS tokens_in,
+                      COALESCE(SUM(tokens_out), 0) AS tokens_out,
+                      COALESCE(SUM(duracion_seg), 0) AS duracion_total
+               FROM metricas_tokens
+               WHERE creado_at >= datetime('now', ? || ' days')""",
+            (f"-{dias}",),
+        ).fetchone()
+    return {
+        "periodo_dias": dias,
+        "llamadas_llm": row["llamadas"],
+        "tokens_entrada": row["tokens_in"],
+        "tokens_salida": row["tokens_out"],
+        "tokens_total": row["tokens_in"] + row["tokens_out"],
+        "duracion_total_seg": round(row["duracion_total"], 1),
+    }
+
+
 @router.get("/progreso/{materia_id}")
 def progreso_materia(materia_id: int):
     with db() as conn:

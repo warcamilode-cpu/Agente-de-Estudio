@@ -1,32 +1,21 @@
-"""Tests de los endpoints del dashboard usando DB en memoria."""
-import sqlite3
+"""Tests de los endpoints del dashboard usando DB en memoria (sin importar main)."""
 import pytest
 from datetime import date
+from contextlib import contextmanager
+from unittest.mock import patch
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-
-
-def _conn_mem():
-    from pathlib import Path
-    schema = (Path(__file__).parent.parent / "database" / "schema.sql").read_text()
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.executescript(schema)
-    conn.commit()
-    return conn
+from tests.conftest import _crear_db_mem
 
 
 @pytest.fixture
-def client():
-    from main import app
-    return TestClient(app)
+def client(dashboard_app):
+    return TestClient(dashboard_app)
 
 
 @pytest.fixture(autouse=True)
 def mock_db():
     """Reemplaza db() con una conexión en memoria para todos los tests."""
-    from contextlib import contextmanager
-    conn = _conn_mem()
+    conn = _crear_db_mem()
 
     @contextmanager
     def _fake_db():
@@ -70,7 +59,6 @@ def test_registrar_sesion(client):
 
 
 def test_racha_con_sesion_hoy(client, mock_db):
-    hoy = str(date.today())
     mock_db.execute(
         "INSERT INTO sesiones_estudio (tipo, duracion_seg) VALUES ('chat', 60)"
     )

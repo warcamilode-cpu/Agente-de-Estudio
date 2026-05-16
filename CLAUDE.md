@@ -58,20 +58,22 @@ Agente-de-Estudio/
 ├── estudio.db                 # SQLite (se crea automático)
 │
 ├── routers/
-│   ├── ai_router.py           # Shaula — chat con historial SSE, sesiones en memoria
+│   ├── ai_router.py           # Shaula — chat SSE, historial persistente en DB, paginación de sesiones
 │   ├── cuaderno_router.py     # Cuaderno Cornell: programas, semestres, materias, clases, apuntes, acciones, referencias
-│   ├── documentos_router.py   # Maia — repositorio de documentos, análisis RAG (BM25), biblioteca de análisis
+│   ├── documentos_router.py   # Maia — repositorio con paginación, análisis RAG (semántico + BM25), biblioteca
 │   ├── plan_router.py         # Atlas (planificador) + Electra (evaluador) — planes de estudio SSE
 │   ├── flashcards_router.py   # CRUD flashcards + algoritmo SM-2
 │   ├── notas_router.py        # CRUD notas Markdown con tags
 │   ├── topics_router.py       # CRUD topics (legacy, pre-cuaderno)
-│   └── dashboard_router.py    # Stats diarias, racha, progreso por topic
+│   └── dashboard_router.py    # Stats diarias, racha, métricas de tokens, backup manual, progreso por materia
 │
 ├── services/
-│   ├── llm_client.py          # Abstracción Claude/Ollama — único punto de contacto con la IA
+│   ├── llm_client.py          # Abstracción Claude/Ollama — logs de tokens y duración, guarda métricas en DB
 │   ├── context_builder.py     # Busca apuntes Cornell + referencias + documentos para el chat (semántico + BM25)
 │   ├── embedder.py            # Lazy-load all-MiniLM-L6-v2; generar_embedding() → lista 384 floats o None
 │   ├── extractor.py           # Extrae texto de PDF/TXT/MD/JSON para RAG
+│   ├── logging_config.py      # Logging estructurado con rotación de archivos (logs/app.log, 5MB × 5)
+│   ├── backup.py              # Backup manual/automático de estudio.db → backups/estudio_YYYYMMDD_HHMMSS.db
 │   └── srs_engine.py          # Algoritmo SM-2 puro
 │
 ├── database/
@@ -199,7 +201,7 @@ Body: `{ "session_id": "uuid", "message": "texto", "materia_id": 1 }`
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/documentos` | Listar (filtros: `materia_id`, `semestre_id`, `programa_id`) |
+| GET | `/documentos` | Listar con paginación (`page`, `page_size`; filtros: `materia_id`, `semestre_id`, `programa_id`) |
 | POST | `/documentos` | Subir archivo (multipart: archivo, titulo, materia_id, semestre_id, programa_id, tags) |
 | GET | `/documentos/{id}` | Obtener metadatos |
 | GET | `/documentos/{id}/archivo` | Servir archivo original (inline) |
@@ -219,7 +221,25 @@ Body: `{ "session_id": "uuid", "message": "texto", "materia_id": 1 }`
 
 Body chat: `{ "plan_id": 1, "mensaje": "texto", "historial": [], "modo": "chat" }`
 
-### `/flashcards`, `/notas`, `/topics`, `/dashboard`
+### `/ai` — sesiones (paginadas)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/ai/sesiones` | Listar sesiones con paginación (`page`, `page_size`) — retorna `{data, total, page, page_size}` |
+
+### `/dashboard` — estadísticas y utilidades
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/dashboard/resumen` | Resumen del día (notas, flashcards, tiempo estudiado) |
+| GET | `/dashboard/racha` | Racha de días de estudio consecutivos |
+| POST | `/dashboard/sesion` | Registrar sesión de estudio |
+| GET | `/dashboard/metricas` | Uso de tokens LLM en los últimos N días (param `dias=30`) |
+| POST | `/dashboard/backup` | Crea backup manual de estudio.db → `backups/` |
+| GET | `/dashboard/progreso/{materia_id}` | Progreso por materia |
+| GET | `/health` | Health check: `{status, timestamp, db, llm}` |
+
+### `/flashcards`, `/notas`, `/topics`
 
 Sin cambios respecto a la versión anterior — ver código de cada router.
 
@@ -347,7 +367,6 @@ sudo systemctl status atalaya   # verificar
 - [ ] RAG semántico con bge-m3 para Maia (Fase 2)
 - [ ] Agente de transcripción con Whisper.cpp medium (Fase 3)
 - [ ] Voz conversacional con Kokoro TTS (Fase 4)
-- [ ] Tests de integración para dashboard (mock de DB)
 - [x] Rate limiting con slowapi (60 req/min global) + exception handler global en main.py
   - Errores HTTP retornan `{"error": true, "detail": "...", "code": N}`
   - Stream de Shaula captura excepciones y devuelve mensaje de error en vez de romper la conexión
@@ -366,6 +385,15 @@ sudo systemctl status atalaya   # verificar
   - pytest y httpx agregados a requirements.txt
 
 ### Completado recientemente ✅
+- [x] Mejoras de producción (TAREAS_MEJORAS.md — alta y media prioridad)
+  - **Sesiones persistentes**: `_cargar_historial()` siempre carga desde DB, el chat sobrevive reinicios del servidor
+  - **Logging estructurado**: `services/logging_config.py` con RotatingFileHandler (5MB × 5 archivos en `logs/app.log`); `llm_client.py` loguea modelo, tokens y duración por cada llamada
+  - **Tests dashboard arreglados**: `conftest.py` expone `dashboard_app` fixture (FastAPI sin slowapi); `test_dashboard.py` usa Option B (router directo); 22/22 tests pasan
+  - **Health check**: `GET /health` retorna `{status, timestamp, db, llm}` — verifica conexión a DB y API key configurada
+  - **Paginación**: `GET /ai/sesiones` y `GET /documentos` aceptan `page`/`page_size`, retornan `{data, total, page, page_size}`
+  - **Métricas de tokens**: tabla `metricas_tokens` registra tokens_in/out y duración por llamada LLM; `GET /dashboard/metricas` expone resumen por período
+  - **Backup automático**: `services/backup.py` copia estudio.db a `backups/estudio_YYYYMMDD_HHMMSS.db`; `POST /dashboard/backup` dispara backup manual; retiene últimos 7
+
 - [x] Búsqueda semántica con sqlite-vec en context_builder (complementa y reemplaza BM25 para documentos)
   - `services/embedder.py` — lazy-load `all-MiniLM-L6-v2` (384 dims); fallback automático a BM25 si no está disponible
   - `chunk_embeddings` — tabla SQLite estándar que guarda los vectores como JSON (portable, sin extensión)

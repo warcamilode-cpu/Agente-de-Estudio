@@ -29,28 +29,25 @@ def listar_documentos(
     materia_id:  int | None = None,
     semestre_id: int | None = None,
     programa_id: int | None = None,
+    page: int = 1,
+    page_size: int = 20,
 ):
+    offset = (max(page, 1) - 1) * page_size
+    cols = "id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at"
     with db() as conn:
         if materia_id is not None:
-            rows = conn.execute(
-                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE materia_id = ? ORDER BY creado_at DESC",
-                (materia_id,),
-            ).fetchall()
+            total = conn.execute("SELECT COUNT(*) FROM documentos WHERE materia_id = ?", (materia_id,)).fetchone()[0]
+            rows = conn.execute(f"SELECT {cols} FROM documentos WHERE materia_id = ? ORDER BY creado_at DESC LIMIT ? OFFSET ?", (materia_id, page_size, offset)).fetchall()
         elif semestre_id is not None:
-            rows = conn.execute(
-                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE semestre_id = ? ORDER BY creado_at DESC",
-                (semestre_id,),
-            ).fetchall()
+            total = conn.execute("SELECT COUNT(*) FROM documentos WHERE semestre_id = ?", (semestre_id,)).fetchone()[0]
+            rows = conn.execute(f"SELECT {cols} FROM documentos WHERE semestre_id = ? ORDER BY creado_at DESC LIMIT ? OFFSET ?", (semestre_id, page_size, offset)).fetchall()
         elif programa_id is not None:
-            rows = conn.execute(
-                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos WHERE programa_id = ? ORDER BY creado_at DESC",
-                (programa_id,),
-            ).fetchall()
+            total = conn.execute("SELECT COUNT(*) FROM documentos WHERE programa_id = ?", (programa_id,)).fetchone()[0]
+            rows = conn.execute(f"SELECT {cols} FROM documentos WHERE programa_id = ? ORDER BY creado_at DESC LIMIT ? OFFSET ?", (programa_id, page_size, offset)).fetchall()
         else:
-            rows = conn.execute(
-                "SELECT id, materia_id, semestre_id, programa_id, titulo, tipo, archivo_nombre, tags, creado_at FROM documentos ORDER BY creado_at DESC"
-            ).fetchall()
-    return [dict(r) for r in rows]
+            total = conn.execute("SELECT COUNT(*) FROM documentos").fetchone()[0]
+            rows = conn.execute(f"SELECT {cols} FROM documentos ORDER BY creado_at DESC LIMIT ? OFFSET ?", (page_size, offset)).fetchall()
+    return {"data": [dict(r) for r in rows], "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/biblioteca")

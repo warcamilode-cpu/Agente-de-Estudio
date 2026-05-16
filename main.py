@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from services.logging_config import configurar_logging
+configurar_logging(nivel=os.getenv("LOG_NIVEL", "INFO"))
+
 from database.connection import init_db
 from routers import ai_router, notas_router, flashcards_router, topics_router, dashboard_router
 from routers import documentos_router, plan_router, cuaderno_router
@@ -54,6 +57,25 @@ app.include_router(plan_router.router)
 app.include_router(cuaderno_router.router)
 
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+
+@app.get("/health")
+def health_check():
+    from datetime import datetime
+    from database.connection import db
+    db_status = "ok"
+    try:
+        with db() as conn:
+            conn.execute("SELECT 1").fetchone()
+    except Exception:
+        db_status = "error"
+    llm_status = "ok" if os.getenv("ANTHROPIC_API_KEY") else "sin_configurar"
+    return {
+        "status": "ok" if db_status == "ok" else "degradado",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "db": db_status,
+        "llm": llm_status,
+    }
 
 
 @app.get("/")

@@ -35,8 +35,10 @@ def nueva_sesion(materia_id: int | None = None):
 
 
 @router.get("/sesiones")
-def listar_sesiones(limit: int = 30):
+def listar_sesiones(page: int = 1, page_size: int = 20):
+    offset = (max(page, 1) - 1) * page_size
     with db() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM sesiones_chat").fetchone()[0]
         rows = conn.execute(
             """SELECT s.session_id, s.titulo, s.topic_id, s.creado_at, s.actualizado_at,
                       COUNT(m.id) as total_mensajes
@@ -44,10 +46,10 @@ def listar_sesiones(limit: int = 30):
                LEFT JOIN mensajes m ON m.session_id = s.session_id
                GROUP BY s.session_id
                ORDER BY s.actualizado_at DESC
-               LIMIT ?""",
-            (limit,),
+               LIMIT ? OFFSET ?""",
+            (page_size, offset),
         ).fetchall()
-    return [dict(r) for r in rows]
+    return {"data": [dict(r) for r in rows], "total": total, "page": page, "page_size": page_size}
 
 
 @router.delete("/sesiones/{session_id}", status_code=204)
@@ -103,22 +105,20 @@ def ver_historial(session_id: str):
 # ── Helpers ──────────────────────────────────────────────────────
 
 def _cargar_historial(session_id: str) -> list[dict]:
-    if session_id not in _cache:
-        # Primera vez en esta instancia del servidor: carga desde DB
-        with db() as conn:
-            # Crea la sesión si no existe (compatibilidad con sesiones viejas)
-            existe = conn.execute(
-                "SELECT 1 FROM sesiones_chat WHERE session_id = ?", (session_id,)
-            ).fetchone()
-            if not existe:
-                conn.execute(
-                    "INSERT INTO sesiones_chat (session_id) VALUES (?)", (session_id,)
-                )
-            rows = conn.execute(
-                "SELECT rol, contenido FROM mensajes WHERE session_id = ? ORDER BY id",
-                (session_id,),
-            ).fetchall()
-        _cache[session_id] = [{"role": r["rol"], "content": r["contenido"]} for r in rows]
+    """Siempre carga el historial completo desde DB — persistente ante reinicios."""
+    with db() as conn:
+        existe = conn.execute(
+            "SELECT 1 FROM sesiones_chat WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        if not existe:
+            conn.execute(
+                "INSERT INTO sesiones_chat (session_id) VALUES (?)", (session_id,)
+            )
+        rows = conn.execute(
+            "SELECT rol, contenido FROM mensajes WHERE session_id = ? ORDER BY id",
+            (session_id,),
+        ).fetchall()
+    _cache[session_id] = [{"role": r["rol"], "content": r["contenido"]} for r in rows]
     return _cache[session_id]
 
 

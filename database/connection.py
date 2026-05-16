@@ -237,6 +237,21 @@ def _migraciones(conn: sqlite3.Connection) -> None:
             "CREATE INDEX IF NOT EXISTS idx_referencias_clase ON referencias_rapidas(clase_id)"
         )
 
+    # Migración: tabla de métricas de tokens LLM
+    if "metricas_tokens" not in tablas:
+        conn.executescript("""
+            CREATE TABLE metricas_tokens (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id    TEXT,
+                modelo        TEXT NOT NULL,
+                tokens_in     INTEGER DEFAULT 0,
+                tokens_out    INTEGER DEFAULT 0,
+                duracion_seg  REAL DEFAULT 0,
+                creado_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_metricas_session ON metricas_tokens(session_id);
+        """)
+
     # Migración: tabla de embeddings para búsqueda semántica (sqlite-vec)
     if "chunk_embeddings" not in tablas:
         conn.executescript("""
