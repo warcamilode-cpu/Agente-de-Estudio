@@ -332,10 +332,14 @@ sudo systemctl status atalaya   # verificar
 - [ ] Agente de transcripción con Whisper.cpp medium (Fase 3)
 - [ ] Voz conversacional con Kokoro TTS (Fase 4)
 - [ ] Búsqueda semántica con sqlite-vec en context_builder (reemplaza BM25)
-- [ ] Tests backend: test_srs_engine.py, test_dashboard.py, test_extractor.py
+- [ ] Tests de integración para dashboard (mock de DB)
 - [ ] Rate limiting con slowapi + exception handler global en main.py
 - [ ] Indicador "escribiendo…" en chat.js y plan.js
 - [ ] Unificar topics y materias: materia_id en notas, filtro en notas_router
+
+- [x] Tests backend: test_srs_engine.py (8 tests), test_extractor.py (10 tests), conftest.py con fixture DB en memoria
+  - Correr con: `pytest tests/ -v`
+  - pytest y httpx agregados a requirements.txt
 
 ### Completado recientemente ✅
 - [x] Registrar sesiones de estudio desde el frontend
