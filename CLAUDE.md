@@ -1,4 +1,4 @@
-# CLAUDE.md — Agente de Estudio
+# CLAUDE.md — Agente de Estudio / Atalaya Pléyades
 
 > Archivo de contexto para sesiones de Claude Code.
 > Leé este archivo completo antes de tocar cualquier código.
@@ -12,15 +12,17 @@ Responde siempre en español colombiano.
 
 ## Qué es este proyecto
 
-Aplicación web personal de estudio tipo "todo en uno" que combina:
-- Chat con IA tutora con contexto de notas propias
-- Gestión de notas en Markdown con tags
+Aplicación web personal de estudio tipo "todo en uno" llamada **Atalaya Pléyades**. Combina:
+- Chat con IA tutora (Shaula) con contexto de apuntes propios
+- Cuaderno Cornell con estructura programa → semestre → materia → clase
 - Sistema de flashcards con spaced repetition (algoritmo SM-2)
+- Repositorio de documentos con análisis por IA (Maia)
+- Planificador de estudio con agente Atlas y evaluador Electra
 - Dashboard de progreso y estadísticas
 
-**Dominio:** derecho colombiano + programación Python  
-**Usuarios:** uso personal (1 usuario, no hay auth por ahora)  
-**Acceso:** servidor Ubuntu local, accedido desde iPad Air M4 vía Tailscale
+**Dominio:** derecho colombiano + programación Python
+**Usuarios:** uso personal (1 usuario, no hay auth)
+**Acceso:** servidor Ubuntu local (Tailscale) + VPS Google Cloud (34.28.13.222:8070)
 
 ---
 
@@ -30,12 +32,12 @@ Aplicación web personal de estudio tipo "todo en uno" que combina:
 |------|-----------|-------|
 | Backend | FastAPI (Python 3.11+) | Uvicorn como servidor |
 | Base de datos | SQLite | Un solo archivo `estudio.db` |
-| IA | Anthropic Claude API | `claude-haiku-4-5-20251001` — proveedor único activo |
-| IA (futuro) | Ollama local | Pendiente de integrar — `qwen2.5-coder:14b` (GTX 1080 Ti) |
+| IA activa | Anthropic Claude API | `claude-haiku-4-5-20251001` |
+| IA futura | Ollama local | Qwen3 8B Q4_K_M — ver `STACK_IA_LOCAL.md` |
 | Frontend | HTML + CSS + Vanilla JS | Sin frameworks, sin build step |
-| Acceso remoto | Tailscale | Ya configurado en el servidor |
+| Extracción de texto | pdfplumber, python-docx | Para RAG de documentos |
 
-**No usar:** React, Vue, Svelte, SQLAlchemy ORM, Alembic, Docker (innecesario para uso personal).  
+**No usar:** React, Vue, SQLAlchemy ORM, Alembic, Docker.
 **Sí usar:** sqlite3 nativo de Python, anthropic SDK oficial.
 
 ---
@@ -43,44 +45,53 @@ Aplicación web personal de estudio tipo "todo en uno" que combina:
 ## Estructura de directorios
 
 ```
-agente-estudio/
+Agente-de-Estudio/
 │
 ├── CLAUDE.md                  # Este archivo
-├── main.py                    # Entry point FastAPI
+├── STACK_IA_LOCAL.md          # Decisiones del stack de modelos locales (Qwen3, Whisper, bge-m3)
+├── main.py                    # Entry point FastAPI + lifespan
 ├── .env                       # Variables de entorno (no commitear)
-├── .env.example               # Plantilla de variables
+├── .env.example               # Plantilla
 ├── requirements.txt
-├── estudio.db                 # Base de datos SQLite (se crea automático)
+├── estudio.db                 # SQLite (se crea automático)
 │
 ├── routers/
-│   ├── __init__.py
-│   ├── ai_router.py           # Chat con IA, streaming, sesiones
-│   ├── notas_router.py        # CRUD de notas
-│   ├── flashcards_router.py   # CRUD de flashcards + lógica SRS
-│   ├── topics_router.py       # CRUD de temas/materias
-│   └── dashboard_router.py    # Stats y progreso
+│   ├── ai_router.py           # Shaula — chat con historial SSE, sesiones en memoria
+│   ├── cuaderno_router.py     # Cuaderno Cornell: programas, semestres, materias, clases, apuntes, acciones, referencias
+│   ├── documentos_router.py   # Maia — repositorio de documentos, análisis RAG (BM25), biblioteca de análisis
+│   ├── plan_router.py         # Atlas (planificador) + Electra (evaluador) — planes de estudio SSE
+│   ├── flashcards_router.py   # CRUD flashcards + algoritmo SM-2
+│   ├── notas_router.py        # CRUD notas Markdown con tags
+│   ├── topics_router.py       # CRUD topics (legacy, pre-cuaderno)
+│   └── dashboard_router.py    # Stats diarias, racha, progreso por topic
 │
 ├── services/
-│   ├── __init__.py
-│   ├── llm_client.py          # Abstracción Ollama/Claude (swappable)
-│   ├── context_builder.py     # Búsqueda de notas + construcción de prompt
-│   └── srs_engine.py          # Algoritmo SM-2 para flashcards
+│   ├── llm_client.py          # Abstracción Claude/Ollama — único punto de contacto con la IA
+│   ├── context_builder.py     # Busca apuntes Cornell + referencias + documentos para el chat
+│   ├── extractor.py           # Extrae texto de PDF/TXT/MD/JSON para RAG
+│   └── srs_engine.py          # Algoritmo SM-2 puro
 │
 ├── database/
-│   ├── __init__.py
-│   ├── connection.py          # Conexión SQLite + context manager
-│   └── schema.sql             # Definición de tablas
+│   ├── connection.py          # Conexión SQLite, context manager db(), init_db(), migraciones
+│   └── schema.sql             # Schema base (migraciones adicionales en connection.py)
 │
-└── frontend/
-    ├── index.html             # SPA principal
-    ├── css/
-    │   └── styles.css
-    └── js/
-        ├── app.js             # Router del frontend (tabs)
-        ├── chat.js            # Módulo chat con streaming SSE
-        ├── notas.js           # Módulo notas
-        ├── flashcards.js      # Módulo flashcards
-        └── dashboard.js       # Módulo estadísticas
+├── frontend/
+│   ├── index.html             # SPA principal
+│   ├── img/                   # Imágenes de los agentes (shaula, atlas, electra, maia, aldebaran, etc.)
+│   ├── css/styles.css
+│   └── js/
+│       ├── app.js             # Router de tabs, estado del sidebar, evento tabchange
+│       ├── chat.js            # Shaula — streaming SSE, historial, sesiones
+│       ├── cuaderno.js        # Cuaderno Cornell completo
+│       ├── documentos.js      # Maia — subida, análisis RAG, biblioteca
+│       ├── plan.js            # Atlas + Electra — generación y chat de planes
+│       ├── flashcards.js      # Repaso con flip de cards
+│       ├── notas.js           # CRUD notas
+│       ├── temas.js           # CRUD topics
+│       ├── dashboard.js       # Estadísticas
+│       └── sprites.js         # Sprites animados de agentes (movimiento libre + drag)
+│
+└── uploads/                   # Archivos subidos por el usuario (PDF, TXT, MD, JSON)
 ```
 
 ---
@@ -88,18 +99,15 @@ agente-estudio/
 ## Variables de entorno (`.env`)
 
 ```env
-# Proveedor de IA: "claude" activo. "ollama" pendiente de implementar.
 LLM_PROVEEDOR=claude
 
-# Claude API (proveedor activo)
 ANTHROPIC_API_KEY=sk-ant-...
 MODELO_CLAUDE=claude-haiku-4-5-20251001
 
-# Ollama (pendiente — hardware: GTX 1080 Ti 11 GB VRAM)
+# Ollama (pendiente — ver STACK_IA_LOCAL.md)
 # OLLAMA_BASE_URL=http://localhost:11434
-# MODELO_OLLAMA=qwen2.5-coder:14b
+# MODELO_OLLAMA=qwen3:8b
 
-# App
 APP_HOST=0.0.0.0
 APP_PORT=8000
 ```
@@ -108,205 +116,199 @@ APP_PORT=8000
 
 ## Base de datos — schema completo
 
+El schema base está en `database/schema.sql`. Las tablas agregadas posteriormente se crean en `database/connection.py` → función `_migraciones()` (idempotente, usa `PRAGMA table_info` antes de cada `ALTER TABLE`).
+
+### Tablas base (`schema.sql`)
+
 ```sql
--- database/schema.sql
-
-CREATE TABLE IF NOT EXISTS topics (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre      TEXT NOT NULL,
-    descripcion TEXT,
-    color       TEXT DEFAULT '#6366f1',   -- hex para UI
-    creado_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS notas (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic_id    INTEGER REFERENCES topics(id) ON DELETE SET NULL,
-    titulo      TEXT NOT NULL,
-    contenido   TEXT NOT NULL,            -- markdown
-    tags        TEXT DEFAULT '',          -- "tutela,derechos,mecanismos"
-    creada_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    actualizada_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS flashcards (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic_id        INTEGER REFERENCES topics(id) ON DELETE SET NULL,
-    nota_id         INTEGER REFERENCES notas(id) ON DELETE SET NULL,
-    pregunta        TEXT NOT NULL,
-    respuesta       TEXT NOT NULL,
-    -- Campos SM-2
-    intervalo       INTEGER DEFAULT 1,    -- días hasta próximo repaso
-    repeticiones    INTEGER DEFAULT 0,    -- veces respondida correctamente seguidas
-    factor_facilidad REAL DEFAULT 2.5,   -- EF del algoritmo SM-2
-    proximo_repaso  DATE DEFAULT (date('now')),
-    creada_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS sesiones_estudio (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic_id        INTEGER REFERENCES topics(id) ON DELETE SET NULL,
-    tipo            TEXT NOT NULL,        -- "chat" | "flashcards" | "notas"
-    duracion_seg    INTEGER DEFAULT 0,
-    cards_revisadas INTEGER DEFAULT 0,
-    cards_correctas INTEGER DEFAULT 0,
-    iniciada_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Índices para búsquedas frecuentes
-CREATE INDEX IF NOT EXISTS idx_notas_topic ON notas(topic_id);
-CREATE INDEX IF NOT EXISTS idx_flashcards_repaso ON flashcards(proximo_repaso);
-CREATE INDEX IF NOT EXISTS idx_flashcards_topic ON flashcards(topic_id);
+topics            -- temas legacy (pre-cuaderno)
+notas             -- notas Markdown con tags y topic_id
+flashcards        -- cards SM-2 con topic_id, nota_id, materia_id
+sesiones_estudio  -- registro de sesiones de repaso
 ```
+
+### Tablas agregadas por migraciones (`connection.py`)
+
+```sql
+-- Jerarquía del cuaderno Cornell
+programas         -- programa académico (pregrado/posgrado)
+semestres         -- semestre con programa_id
+materias          -- materia con semestre_id, emoji, color, docente
+clases            -- clase con materia_id, fecha, titulo, temas
+apuntes_cornell   -- indicios / notas_principales / resumen por clase (1:1 con clases)
+acciones_clase    -- pendientes/tareas/dudas por clase
+referencias_rapidas -- términos y definiciones por materia o clase
+
+-- Documentos y RAG
+documentos        -- archivos subidos (PDF/TXT/MD/JSON) con materia_id, semestre_id, programa_id
+documento_chunks  -- fragmentos de texto para búsqueda BM25 (doc_id, chunk_idx, texto)
+
+-- Chat
+sesiones_chat     -- sesiones del chat de Shaula con session_id UUID
+mensajes          -- historial persistido (actualmente no se usa — el historial vive en memoria)
+
+-- Planificador
+planes_estudio    -- planes generados por Atlas (materia_id, tema, plan_texto)
+
+-- Biblioteca de análisis Maia
+maia_analisis     -- análisis guardados (titulo, pregunta, respuesta, doc_id, materia_id)
+```
+
+### Columnas adicionales relevantes
+
+- `topics.parent_id` — jerarquía de topics (migración)
+- `flashcards.materia_id` — asociación a materia del cuaderno
+- `documentos.semestre_id`, `documentos.programa_id` — jerarquía completa en documentos
+- `referencias_rapidas.clase_id` — referencias por clase (además de por materia)
 
 ---
 
 ## API — endpoints por router
 
-### `/ai` — Chat con IA
+### `/ai` — Shaula (chat tutora)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/ai/chat/nueva-sesion` | Genera un `session_id` UUID |
-| POST | `/ai/chat` | Chat sin streaming |
-| POST | `/ai/chat/stream` | Chat con streaming (SSE) — **preferido** |
-| DELETE | `/ai/chat/{session_id}` | Limpia historial de la sesión |
-| GET | `/ai/chat/{session_id}/historial` | Ver historial (debug) |
+| POST | `/ai/chat/nueva-sesion` | Crea `session_id` UUID |
+| POST | `/ai/chat/stream` | Chat streaming SSE — **único usado en frontend** |
+| DELETE | `/ai/chat/{session_id}` | Limpia historial en memoria |
+| GET | `/ai/chat/{session_id}/historial` | Debug |
 
-**Body de `/ai/chat` y `/ai/chat/stream`:**
-```json
-{
-  "session_id": "uuid-aqui",
-  "message": "¿Cuándo procede la tutela?",
-  "topic_id": 1
-}
-```
+Body: `{ "session_id": "uuid", "message": "texto", "materia_id": 1 }`
 
-### `/topics` — Temas/materias
+### `/cuaderno` — Cuaderno Cornell
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/topics` | Listar todos |
-| POST | `/topics` | Crear topic |
-| PUT | `/topics/{id}` | Editar |
-| DELETE | `/topics/{id}` | Eliminar |
+| GET/POST | `/cuaderno/programas` | Listar / crear programas |
+| PUT/DELETE | `/cuaderno/programas/{id}` | Editar / eliminar |
+| GET/POST | `/cuaderno/semestres` | Listar / crear semestres |
+| GET/POST | `/cuaderno/materias` | Listar por semestre / crear |
+| PATCH | `/cuaderno/materias/{id}/info` | Actualizar docente, email, salón |
+| GET/POST | `/cuaderno/clases` | Listar por materia / crear |
+| GET/PUT | `/cuaderno/clases/{id}/apuntes` | Obtener / guardar apuntes Cornell |
+| GET/POST | `/cuaderno/acciones` | Listar por clase / crear acción |
+| PATCH | `/cuaderno/acciones/{id}/toggle` | Marcar resuelta/pendiente |
+| GET/POST | `/cuaderno/referencias` | Listar por materia o clase / crear |
+| GET | `/cuaderno/estructura` | Árbol completo programa→semestre→materia |
 
-### `/notas` — Notas de estudio
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/notas` | Listar (filtros: `topic_id`, `tags`, `q` para búsqueda) |
-| GET | `/notas/{id}` | Ver nota individual |
-| POST | `/notas` | Crear nota |
-| PUT | `/notas/{id}` | Editar nota |
-| DELETE | `/notas/{id}` | Eliminar nota |
-
-### `/flashcards` — Sistema de repaso
+### `/documentos` — Maia (repositorio)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/flashcards/pendientes` | Cards para repasar hoy |
-| GET | `/flashcards` | Listar todas (filtro: `topic_id`) |
-| POST | `/flashcards` | Crear card |
-| POST | `/flashcards/{id}/respuesta` | Registrar respuesta (aplica SM-2) |
-| PUT | `/flashcards/{id}` | Editar card |
-| DELETE | `/flashcards/{id}` | Eliminar card |
+| GET | `/documentos` | Listar (filtros: `materia_id`, `semestre_id`, `programa_id`) |
+| POST | `/documentos` | Subir archivo (multipart: archivo, titulo, materia_id, semestre_id, programa_id, tags) |
+| GET | `/documentos/{id}` | Obtener metadatos |
+| GET | `/documentos/{id}/archivo` | Servir archivo original (inline) |
+| DELETE | `/documentos/{id}` | Eliminar documento y archivo |
+| POST | `/documentos/analisis/stream` | Chat con Maia sobre documentos (SSE, BM25 RAG) |
+| GET/POST | `/documentos/biblioteca` | Listar / guardar análisis de Maia |
+| DELETE | `/documentos/biblioteca/{id}` | Eliminar análisis |
 
-**Body de `/flashcards/{id}/respuesta`:**
-```json
-{ "calificacion": 4 }
-```
-Calificaciones SM-2: `0`=no supe nada, `1`=muy difícil, `2`=difícil, `3`=bien, `4`=fácil, `5`=perfecto
-
-### `/dashboard` — Estadísticas
+### `/plan` — Atlas + Electra
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/dashboard/resumen` | Stats generales del día |
-| GET | `/dashboard/racha` | Días consecutivos de estudio |
-| GET | `/dashboard/progreso/{topic_id}` | Progreso por tema |
+| POST | `/plan/planificador` | Genera plan completo (síncrono, 3 módulos) |
+| GET | `/plan/planificador/planes` | Listar planes guardados |
+| GET | `/plan/planificador/planes/{id}` | Obtener plan por ID |
+| POST | `/plan/planificador/chat/stream` | Chat sobre el plan (modo `chat`=Atlas / `evaluador`=Electra) |
+
+Body chat: `{ "plan_id": 1, "mensaje": "texto", "historial": [], "modo": "chat" }`
+
+### `/flashcards`, `/notas`, `/topics`, `/dashboard`
+
+Sin cambios respecto a la versión anterior — ver código de cada router.
 
 ---
 
 ## Servicios clave
 
-### `services/llm_client.py` — Abstracción de IA
+### `services/llm_client.py`
 
-Único punto de contacto con el modelo de IA. El resto del código **nunca importa `anthropic` u `ollama` directamente**.
+Único punto de contacto con la IA. Nunca importar `anthropic` directamente en los routers.
 
 ```python
-# Interfaz pública del módulo:
-def preguntar(system_prompt: str, mensajes: list[dict]) -> str
-def preguntar_stream(system_prompt: str, mensajes: list[dict]) -> Generator[str, None, None]
+def preguntar(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None) -> str
+def preguntar_stream(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None) -> Generator[str, None, None]
 ```
 
-El proveedor se controla con `LLM_PROVEEDOR` en `.env`. Cambiar de Ollama a Claude no requiere tocar ningún router.
+Valores por defecto: `_MAX_TOKENS = 4096`, `_MAX_TOKENS_PLAN = 8192`.
+El proveedor se controla con `LLM_PROVEEDOR` en `.env` — cambiar de Claude a Ollama no toca ningún router.
 
-### `services/context_builder.py` — Contexto para el chat
+### `services/context_builder.py`
 
-Busca notas relevantes en SQLite y construye el system prompt.
+Busca contexto relevante en la DB para el chat de Shaula. Combina tres fuentes:
 
 ```python
-# Interfaz pública:
-def buscar_notas(mensaje: str, topic_id: int | None, limite: int = 4) -> tuple[str, int]
+def construir_contexto(mensaje: str, materia_id: int | None) -> tuple[str, int]
+# Busca en: apuntes Cornell (indicios + notas), referencias rápidas, chunks de documentos
+# Retorna: (texto_contexto, n_fuentes_encontradas)
+
 def construir_system_prompt(contexto: str) -> str
+# Genera el system prompt de Shaula con el contexto inyectado
 ```
 
-La búsqueda usa `LIKE` sobre título, contenido y tags. Es suficiente para uso personal — no implementar embeddings ni búsqueda semántica todavía.
+La búsqueda usa `LIKE` sobre los textos. No hay embeddings aún — ver `STACK_IA_LOCAL.md` para la migración a bge-m3.
 
-### `services/srs_engine.py` — Algoritmo SM-2
+### `services/extractor.py`
+
+Extrae texto plano de archivos subidos para indexar en `documento_chunks`.
 
 ```python
-# Interfaz pública:
-def calcular_siguiente_repaso(
-    calificacion: int,         # 0-5
-    intervalo_actual: int,     # días
-    repeticiones: int,
-    factor_facilidad: float
-) -> tuple[int, int, float]    # (nuevo_intervalo, nuevas_repeticiones, nuevo_ef)
+def extraer_texto(ruta: str) -> str      # PDF, TXT, MD, JSON
+def chunkear_texto(texto: str) -> list[str]  # fragmentos de ~500 chars con solapamiento
 ```
 
-Implementación pura del algoritmo SM-2 de Anki. Sin efectos secundarios — solo calcula, el router persiste.
+### `services/srs_engine.py`
+
+Algoritmo SM-2 puro, sin efectos secundarios.
+
+```python
+def calcular_siguiente_repaso(calificacion, intervalo_actual, repeticiones, factor_facilidad) -> tuple[int, int, float]
+```
+
+---
+
+## Agentes y personalidades
+
+| Agente | Rol | Modo Qwen3 (futuro) | Imagen |
+|--------|-----|---------------------|--------|
+| **Shaula** | Tutora de chat — enseña paso a paso | `/no_think` | `shaula.png` |
+| **Atlas** | Planificadora — genera planes de 3 módulos | `/think` | `atlas.png` |
+| **Electra** | Evaluadora — examen en 2 partes (4 teóricas + 4 prácticas) | `/think` | `electra.png` |
+| **Maia** | Análisis documental — RAG sobre repositorio | `/no_think` | `maia.png` |
+| **Aldebarán** | Avatar del usuario | — | `aldebaran.png` |
 
 ---
 
 ## Decisiones de arquitectura
 
-**Por qué historial en memoria y no en SQLite:**  
-El historial de conversación es efímero — solo importa dentro de una sesión activa. Guardar cada mensaje en DB agrega complejidad sin beneficio real para un usuario personal. Si el servidor se reinicia, el usuario abre una sesión nueva. Aceptable.
+**Historial de chat en memoria:** efímero, válido solo durante la sesión activa. Si el servidor reinicia, el usuario abre sesión nueva — aceptable para uso personal.
 
-**Por qué `MAX_HISTORIAL = 10` (5 turnos):**  
-Evita que el contexto acumulado aumente el costo de tokens y la latencia. Para sesiones largas, el usuario puede limpiar la sesión con DELETE.
+**BM25-lite para RAG de Maia:** búsqueda por frecuencia de términos sobre los chunks. Suficiente hoy. La migración a embeddings semánticos (bge-m3 via Ollama) está planificada en Fase 2 del stack local.
 
-**Por qué SQLite y no PostgreSQL:**  
-Un usuario, acceso local, datos de estudio personal. SQLite es más que suficiente y elimina un proceso externo del servidor.
+**Rutas literales antes que paramétricas:** en FastAPI, `/documentos/biblioteca` debe registrarse ANTES de `/documentos/{doc_id}` para evitar que el parámetro capture la ruta literal.
 
-**Por qué Vanilla JS y no React:**  
-El frontend se sirve como archivos estáticos desde FastAPI. Sin build step, sin node_modules, editable directamente desde el iPad. El proyecto no justifica la complejidad de un framework.
+**SQLite sobre PostgreSQL:** un usuario, uso personal, sin concurrencia. SQLite elimina un proceso externo.
 
-**Por qué Claude Haiku como proveedor inicial y no Ollama:**  
-Se priorizó tener el agente funcionando rápido con calidad garantizada. Haiku 4.5 es el modelo más económico de Anthropic y maneja bien español y derecho. Ollama queda pendiente para cuando se quiera eliminar el costo de API en desarrollo.
-
-**Ollama (futuro):**  
-Hardware disponible: GTX 1080 Ti con 11 GB VRAM. `qwen2.5-coder:14b` usa ~8.2 GB en Q4, cabe íntegramente en GPU. Cuando se integre, el switch es una línea en `.env` sin tocar ningún router — la abstracción `llm_client.py` ya lo prevé.
+**Vanilla JS sobre React:** sin build step, editable desde iPad, archivos estáticos servidos por FastAPI.
 
 ---
 
 ## Cómo correr el proyecto
 
 ```bash
-# 1. Instalar dependencias
-pip install -r requirements.txt
-
-# 2. Configurar entorno
-cp .env.example .env
-# editar .env: poner ANTHROPIC_API_KEY y verificar MODELO_CLAUDE
-
-# 3. Levantar el servidor (init_db() corre automático al arrancar via lifespan)
+# Local
+source venv/bin/activate
+pip install -r requirements.txt python-multipart
+cp .env.example .env  # completar ANTHROPIC_API_KEY
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Acceso desde iPad (Tailscale)
-# http://<ip-tailscale-del-servidor>:8000
+# VPS (systemd)
+sudo systemctl start atalaya    # iniciar
+sudo systemctl restart atalaya  # reiniciar tras git pull
+sudo systemctl status atalaya   # verificar
 ```
 
 ---
@@ -314,31 +316,30 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## Estado del proyecto
 
 ### Completado ✅
-- [x] Arquitectura definida
-- [x] `database/connection.py` — conexión SQLite, context manager, `init_db()`
-- [x] `database/schema.sql` — tablas y índices
-- [x] `services/llm_client.py` — Claude Haiku 4.5 (streaming + sync)
-- [x] `services/context_builder.py` — búsqueda LIKE + system prompt
-- [x] `services/srs_engine.py` — algoritmo SM-2 puro
-- [x] `routers/ai_router.py` — chat con historial en memoria, streaming SSE
-- [x] `routers/notas_router.py` — CRUD completo con filtros
-- [x] `routers/flashcards_router.py` — CRUD + endpoint de respuesta SM-2
-- [x] `routers/topics_router.py` — CRUD completo
-- [x] `routers/dashboard_router.py` — resumen diario, racha, progreso por topic
-- [x] `main.py` — FastAPI con lifespan, todos los routers, archivos estáticos
-- [x] Frontend completo — chat SSE, notas, flashcards con flip, dashboard
+- [x] Cuaderno Cornell completo (programas → semestres → materias → clases → apuntes)
+- [x] Referencias rápidas por materia y por clase
+- [x] Repositorio de documentos con RAG BM25 (Maia)
+- [x] Biblioteca de análisis de Maia
+- [x] Planificador Atlas — 3 módulos (concepto / 3 ejemplos por dificultad / 10 preguntas)
+- [x] Evaluador Electra — 2 partes (4 teóricas + 4 prácticas medio/difícil, diagnóstico sobre 8)
+- [x] Sprites animados de agentes con movimiento libre y drag en el sidebar
+- [x] Deploy en VPS Google Cloud con systemd
+- [x] Imágenes de todos los agentes en `frontend/img/`
 
 ### Pendiente 📋
-- [ ] Integración Ollama (estructura lista en `llm_client.py`, falta implementar)
-- [ ] Datos de prueba (topics y notas iniciales de derecho y Python)
-- [ ] Registrar sesiones de estudio desde el frontend (tabla `sesiones_estudio` existe)
+- [ ] Migración a Qwen3 8B via Ollama (ver `STACK_IA_LOCAL.md` — Fase 1)
+- [ ] RAG semántico con bge-m3 para Maia (Fase 2)
+- [ ] Agente de transcripción con Whisper.cpp medium (Fase 3)
+- [ ] Voz conversacional con Kokoro TTS (Fase 4)
+- [ ] Registrar sesiones de estudio desde el frontend
 
 ---
 
 ## Convenciones de código
 
-- **Python:** snake_case, type hints en todas las funciones, docstrings solo si la función no es obvia
-- **SQL:** keywords en MAYÚSCULAS, aliases descriptivos en minúsculas
-- **Commits:** en español, descriptivos (`agrega endpoint de flashcards`, `corrige cálculo SM-2`)
-- **Errores:** usar `HTTPException` de FastAPI, nunca `print()` para logs en producción
-- **No ORM:** queries SQL directas con `sqlite3`, así el código es legible sin conocer SQLAlchemy
+- **Python:** snake_case, type hints en todas las funciones
+- **SQL:** keywords en MAYÚSCULAS, aliases en minúsculas
+- **Commits:** en español, descriptivos
+- **Errores:** `HTTPException` de FastAPI, nunca `print()` en producción
+- **No ORM:** queries SQL directas con `sqlite3`
+- **Rutas FastAPI:** literales antes que paramétricas en el mismo router
