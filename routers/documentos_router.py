@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from database.connection import db
 from services.extractor import extraer_texto, chunkear_texto
 from services import llm_client
+from services import embedder
 
 router = APIRouter(prefix="/documentos", tags=["documentos"])
 
@@ -125,14 +126,52 @@ async def subir_documento(
 
         # Almacenar chunks para RAG
         chunks = chunkear_texto(texto)
+        chunk_ids = []
         for idx, chunk in enumerate(chunks):
-            conn.execute(
+            cur_chunk = conn.execute(
                 "INSERT INTO documento_chunks (doc_id, chunk_idx, texto) VALUES (?,?,?)",
                 (doc_id, idx, chunk),
             )
+            chunk_ids.append((cur_chunk.lastrowid, chunk))
 
         row = conn.execute("SELECT * FROM documentos WHERE id = ?", (doc_id,)).fetchone()
+
+    # Generar y guardar embeddings fuera del context manager (puede tardar)
+    _guardar_embeddings(doc_id, chunk_ids)
+
     return dict(row)
+
+
+def _guardar_embeddings(doc_id: int, chunk_ids: list[tuple[int, str]]) -> None:
+    """Genera embeddings para cada chunk y los persiste en chunk_embeddings y vec_chunks."""
+    if not chunk_ids:
+        return
+    pares = []
+    for chunk_id, texto in chunk_ids:
+        vec = embedder.generar_embedding(texto)
+        if vec is not None:
+            pares.append((chunk_id, doc_id, json.dumps(vec)))
+
+    if not pares:
+        return
+
+    with db() as conn:
+        conn.executemany(
+            "INSERT OR REPLACE INTO chunk_embeddings (chunk_id, doc_id, embedding) VALUES (?,?,?)",
+            pares,
+        )
+        # Intentar insertar en vec0 virtual table si está disponible
+        try:
+            import struct
+            for chunk_id, _, emb_json in pares:
+                vec = json.loads(emb_json)
+                blob = struct.pack(f"{len(vec)}f", *vec)
+                conn.execute(
+                    "INSERT OR REPLACE INTO vec_chunks (chunk_id, embedding) VALUES (?, ?)",
+                    (chunk_id, blob),
+                )
+        except Exception:
+            pass  # vec_chunks no disponible; chunk_embeddings es suficiente
 
 
 @router.delete("/{doc_id}", status_code=204)

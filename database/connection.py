@@ -6,10 +6,23 @@ DB_PATH = Path(__file__).parent.parent / "estudio.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
+def _cargar_sqlite_vec(conn: sqlite3.Connection) -> bool:
+    """Carga la extensión sqlite-vec si está disponible. Retorna True si se cargó."""
+    try:
+        import sqlite_vec
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
+        return True
+    except Exception:
+        return False
+
+
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    _cargar_sqlite_vec(conn)
     return conn
 
 
@@ -223,6 +236,27 @@ def _migraciones(conn: sqlite3.Connection) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_referencias_clase ON referencias_rapidas(clase_id)"
         )
+
+    # Migración: tabla de embeddings para búsqueda semántica (sqlite-vec)
+    if "chunk_embeddings" not in tablas:
+        conn.executescript("""
+            CREATE TABLE chunk_embeddings (
+                chunk_id  INTEGER PRIMARY KEY REFERENCES documento_chunks(id) ON DELETE CASCADE,
+                doc_id    INTEGER NOT NULL,
+                embedding TEXT NOT NULL
+            );
+            CREATE INDEX idx_embeddings_doc ON chunk_embeddings(doc_id);
+        """)
+
+    # Tabla virtual vec0 (sqlite-vec) — solo si la extensión está disponible
+    tablas_actualizadas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "vec_chunks" not in tablas_actualizadas:
+        try:
+            conn.execute(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[384])"
+            )
+        except Exception:
+            pass  # sqlite-vec no disponible; se usará chunk_embeddings como fallback
 
 
 def init_db() -> None:

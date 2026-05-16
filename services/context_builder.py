@@ -1,4 +1,7 @@
+import json
+import math
 from database.connection import db
+from services import embedder
 
 
 def _like_where(terminos: list[str], columnas: list[str]) -> tuple[str, list]:
@@ -126,9 +129,79 @@ def _buscar_notas_materia(mensaje: str, materia_id: int | None, limite: int = 3)
     return "\n\n".join(fragmentos), len(rows)
 
 
+def _coseno(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _buscar_semantico(
+    query_vec: list[float], materia_id: int | None, limite: int
+) -> list[tuple[str, str, str, str]]:
+    """Retorna lista de (texto, titulo, tipo, tags) ordenada por similitud coseno."""
+    with db() as conn:
+        # ¿Hay embeddings guardados?
+        count = conn.execute("SELECT COUNT(*) FROM chunk_embeddings").fetchone()[0]
+        if count == 0:
+            return []
+
+        if materia_id is not None:
+            rows = conn.execute(
+                """SELECT ce.chunk_id, ce.embedding, dc.texto, d.titulo, d.tipo, d.tags
+                   FROM chunk_embeddings ce
+                   JOIN documento_chunks dc ON dc.id = ce.chunk_id
+                   JOIN documentos d ON d.id = ce.doc_id
+                   WHERE ce.doc_id IN (SELECT id FROM documentos WHERE materia_id = ?)""",
+                (materia_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT ce.chunk_id, ce.embedding, dc.texto, d.titulo, d.tipo, d.tags
+                   FROM chunk_embeddings ce
+                   JOIN documento_chunks dc ON dc.id = ce.chunk_id
+                   JOIN documentos d ON d.id = ce.doc_id"""
+            ).fetchall()
+
+    if not rows:
+        return []
+
+    scored = []
+    for r in rows:
+        try:
+            vec = json.loads(r["embedding"])
+            sim = _coseno(query_vec, vec)
+            scored.append((sim, r["texto"], r["titulo"], r["tipo"], r["tags"] or ""))
+        except Exception:
+            continue
+
+    scored.sort(key=lambda x: -x[0])
+    return [(txt, tit, tip, tgs) for _, txt, tit, tip, tgs in scored[:limite]]
+
+
 def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 5) -> tuple[str, int]:
     terminos = [t for t in mensaje.lower().split() if len(t) > 2]
 
+    # Búsqueda semántica si el modelo de embeddings está disponible
+    query_vec = embedder.generar_embedding(mensaje)
+    if query_vec is not None:
+        resultados = _buscar_semantico(query_vec, materia_id, limite)
+        if resultados:
+            por_doc: dict[str, list[str]] = {}
+            for texto, titulo, tipo, tags in resultados:
+                clave = f"{titulo}||{tipo}||{tags}"
+                por_doc.setdefault(clave, []).append(texto)
+            fragmentos = []
+            for clave, textos in por_doc.items():
+                titulo, tipo, tags = clave.split("||")
+                tag_str = f" [tags: {tags}]" if tags else ""
+                cuerpo = "\n\n[...]\n\n".join(textos)
+                fragmentos.append(f"### {titulo} ({tipo.upper()}){tag_str}\n{cuerpo}")
+            return "\n\n---\n\n".join(fragmentos), len(por_doc)
+
+    # Fallback BM25-lite si no hay embeddings o modelo no disponible
     # Primero filtrar documentos por materia y título/tags relevantes
     doc_where = "1=1"
     doc_params: list = []

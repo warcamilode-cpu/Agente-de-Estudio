@@ -36,6 +36,8 @@ Aplicación web personal de estudio tipo "todo en uno" llamada **Atalaya Pléyad
 | IA futura | Ollama local | Qwen3 8B Q4_K_M — ver `STACK_IA_LOCAL.md` |
 | Frontend | HTML + CSS + Vanilla JS | Sin frameworks, sin build step |
 | Extracción de texto | pdfplumber, python-docx | Para RAG de documentos |
+| Embeddings semánticos | sentence-transformers | `all-MiniLM-L6-v2` (384 dims), carga lazy con fallback a BM25 |
+| Búsqueda vectorial | sqlite-vec | Extensión SQLite para `vec0`; fallback a coseno en Python si no está |
 
 **No usar:** React, Vue, SQLAlchemy ORM, Alembic, Docker.
 **Sí usar:** sqlite3 nativo de Python, anthropic SDK oficial.
@@ -67,7 +69,8 @@ Agente-de-Estudio/
 │
 ├── services/
 │   ├── llm_client.py          # Abstracción Claude/Ollama — único punto de contacto con la IA
-│   ├── context_builder.py     # Busca apuntes Cornell + referencias + documentos para el chat
+│   ├── context_builder.py     # Busca apuntes Cornell + referencias + documentos para el chat (semántico + BM25)
+│   ├── embedder.py            # Lazy-load all-MiniLM-L6-v2; generar_embedding() → lista 384 floats o None
 │   ├── extractor.py           # Extrae texto de PDF/TXT/MD/JSON para RAG
 │   └── srs_engine.py          # Algoritmo SM-2 puro
 │
@@ -251,6 +254,19 @@ def construir_system_prompt(contexto: str) -> str
 
 La búsqueda usa `LIKE` sobre los textos. No hay embeddings aún — ver `STACK_IA_LOCAL.md` para la migración a bge-m3.
 
+### `services/embedder.py`
+
+Genera embeddings semánticos con `all-MiniLM-L6-v2` (384 dimensiones). Carga el modelo de forma lazy al primer uso. Si `sentence-transformers` no está instalado o el modelo falla, retorna `None` y el sistema cae en BM25.
+
+```python
+def generar_embedding(texto: str) -> list[float] | None   # vector normalizado 384-d o None
+def disponible() -> bool                                   # True si el modelo cargó correctamente
+```
+
+Las tablas de persistencia son:
+- `chunk_embeddings(chunk_id, doc_id, embedding TEXT)` — JSON del vector, siempre disponible
+- `vec_chunks` — tabla virtual `vec0` de sqlite-vec (float[384]), creada solo si la extensión carga
+
 ### `services/extractor.py`
 
 Extrae texto plano de archivos subidos para indexar en `documento_chunks`.
@@ -331,7 +347,6 @@ sudo systemctl status atalaya   # verificar
 - [ ] RAG semántico con bge-m3 para Maia (Fase 2)
 - [ ] Agente de transcripción con Whisper.cpp medium (Fase 3)
 - [ ] Voz conversacional con Kokoro TTS (Fase 4)
-- [ ] Búsqueda semántica con sqlite-vec en context_builder (reemplaza BM25)
 - [ ] Tests de integración para dashboard (mock de DB)
 - [x] Rate limiting con slowapi (60 req/min global) + exception handler global en main.py
   - Errores HTTP retornan `{"error": true, "detail": "...", "code": N}`
@@ -351,6 +366,14 @@ sudo systemctl status atalaya   # verificar
   - pytest y httpx agregados a requirements.txt
 
 ### Completado recientemente ✅
+- [x] Búsqueda semántica con sqlite-vec en context_builder (complementa y reemplaza BM25 para documentos)
+  - `services/embedder.py` — lazy-load `all-MiniLM-L6-v2` (384 dims); fallback automático a BM25 si no está disponible
+  - `chunk_embeddings` — tabla SQLite estándar que guarda los vectores como JSON (portable, sin extensión)
+  - `vec_chunks` — tabla virtual `vec0` de sqlite-vec cargada como extensión en `get_connection()`
+  - Al subir un documento se generan embeddings por chunk y se persisten en ambas tablas
+  - `context_builder._buscar_documentos()` intenta búsqueda semántica (coseno) primero; cae en BM25 si el modelo no cargó o no hay embeddings
+  - `sqlite-vec` y `sentence-transformers` agregados a requirements.txt
+
 - [x] Registrar sesiones de estudio desde el frontend
   - `POST /dashboard/sesion` — recibe tipo, duracion_seg, materia_id, cards_revisadas, cards_correctas
   - `registrarSesion()` en dashboard.js llamada al salir del repaso de flashcards
