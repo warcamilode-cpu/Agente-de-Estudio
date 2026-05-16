@@ -103,6 +103,29 @@ def _bm25_score(texto: str, terminos: list[str]) -> float:
     return score
 
 
+def _buscar_notas_materia(mensaje: str, materia_id: int | None, limite: int = 3) -> tuple[str, int]:
+    """Busca notas Markdown asociadas a una materia (columna materia_id)."""
+    if materia_id is None:
+        return "", 0
+    terminos = [t for t in mensaje.lower().split() if len(t) > 2]
+    where, params = _like_where(
+        terminos or [""], ["LOWER(titulo)", "LOWER(contenido)", "LOWER(tags)"]
+    )
+    params = [materia_id] + params + [limite]
+    with db() as conn:
+        rows = conn.execute(
+            f"SELECT titulo, contenido, tags FROM notas WHERE materia_id = ? AND ({where}) LIMIT ?",
+            params,
+        ).fetchall()
+    if not rows:
+        return "", 0
+    fragmentos = []
+    for r in rows:
+        tags = f" [tags: {r['tags']}]" if r["tags"] else ""
+        fragmentos.append(f"### {r['titulo']}{tags}\n{r['contenido'][:600]}")
+    return "\n\n".join(fragmentos), len(rows)
+
+
 def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 5) -> tuple[str, int]:
     terminos = [t for t in mensaje.lower().split() if len(t) > 2]
 
@@ -177,19 +200,22 @@ def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 5) ->
 
 
 def construir_contexto(mensaje: str, materia_id: int | None) -> tuple[str, int]:
-    apuntes_txt, n_ap = _buscar_apuntes(mensaje, materia_id, limite=4)
-    refs_txt, n_refs = _buscar_referencias(mensaje, materia_id, limite=6)
-    docs_txt, n_docs = _buscar_documentos(mensaje, materia_id, limite=3)
+    apuntes_txt, n_ap   = _buscar_apuntes(mensaje, materia_id, limite=4)
+    refs_txt,    n_refs = _buscar_referencias(mensaje, materia_id, limite=6)
+    docs_txt,    n_docs = _buscar_documentos(mensaje, materia_id, limite=3)
+    notas_txt,   n_not  = _buscar_notas_materia(mensaje, materia_id, limite=3)
 
     partes = []
     if apuntes_txt:
         partes.append("## Apuntes del cuaderno (Cornell)\n\n" + apuntes_txt)
     if refs_txt:
         partes.append("## Referencias rápidas\n\n" + refs_txt)
+    if notas_txt:
+        partes.append("## Notas de estudio\n\n" + notas_txt)
     if docs_txt:
         partes.append("## Documentos / lecturas\n\n" + docs_txt)
 
-    return "\n\n".join(partes), n_ap + n_refs + n_docs
+    return "\n\n".join(partes), n_ap + n_refs + n_docs + n_not
 
 
 def construir_system_prompt(contexto: str) -> str:

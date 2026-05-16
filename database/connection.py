@@ -206,6 +206,14 @@ def _migraciones(conn: sqlite3.Connection) -> None:
             CREATE INDEX idx_maia_analisis_materia ON maia_analisis(materia_id);
         """)
 
+    # Migración: materia_id en notas (unificación topics ↔ materias)
+    columnas_notas = {r[1] for r in conn.execute("PRAGMA table_info(notas)")}
+    if "materia_id" not in columnas_notas:
+        conn.execute(
+            "ALTER TABLE notas ADD COLUMN materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL"
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_notas_materia ON notas(materia_id)")
+
     # Migración: clase_id en referencias_rapidas (referencias por clase)
     columnas_ref = {r[1] for r in conn.execute("PRAGMA table_info(referencias_rapidas)")}
     if "clase_id" not in columnas_ref:

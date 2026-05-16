@@ -9,12 +9,14 @@ class NotaIn(BaseModel):
     titulo: str
     contenido: str
     topic_id: int | None = None
+    materia_id: int | None = None  # unificación: asociar nota a materia del cuaderno
     tags: str = ""
 
 
 @router.get("")
 def listar_notas(
     topic_id: int | None = Query(None),
+    materia_id: int | None = Query(None),
     tags: str | None = Query(None),
     q: str | None = Query(None),
 ):
@@ -24,6 +26,9 @@ def listar_notas(
     if topic_id is not None:
         condiciones.append("topic_id = ?")
         params.append(topic_id)
+    if materia_id is not None:
+        condiciones.append("materia_id = ?")
+        params.append(materia_id)
     if tags:
         condiciones.append("tags LIKE ?")
         params.append(f"%{tags}%")
@@ -35,7 +40,7 @@ def listar_notas(
 
     with db() as conn:
         rows = conn.execute(
-            f"SELECT id, topic_id, titulo, tags, creada_at, actualizada_at FROM notas {where} ORDER BY actualizada_at DESC",
+            f"SELECT id, topic_id, materia_id, titulo, tags, creada_at, actualizada_at FROM notas {where} ORDER BY actualizada_at DESC",
             params,
         ).fetchall()
     return [dict(r) for r in rows]
@@ -54,8 +59,8 @@ def ver_nota(nota_id: int):
 def crear_nota(body: NotaIn):
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO notas (titulo, contenido, topic_id, tags) VALUES (?, ?, ?, ?)",
-            (body.titulo, body.contenido, body.topic_id, body.tags),
+            "INSERT INTO notas (titulo, contenido, topic_id, materia_id, tags) VALUES (?, ?, ?, ?, ?)",
+            (body.titulo, body.contenido, body.topic_id, body.materia_id, body.tags),
         )
         row = conn.execute("SELECT * FROM notas WHERE id = ?", (cur.lastrowid,)).fetchone()
     return dict(row)
@@ -66,10 +71,10 @@ def editar_nota(nota_id: int, body: NotaIn):
     with db() as conn:
         conn.execute(
             """UPDATE notas
-               SET titulo = ?, contenido = ?, topic_id = ?, tags = ?,
+               SET titulo = ?, contenido = ?, topic_id = ?, materia_id = ?, tags = ?,
                    actualizada_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
-            (body.titulo, body.contenido, body.topic_id, body.tags, nota_id),
+            (body.titulo, body.contenido, body.topic_id, body.materia_id, body.tags, nota_id),
         )
         row = conn.execute("SELECT * FROM notas WHERE id = ?", (nota_id,)).fetchone()
     if row is None:

@@ -341,7 +341,10 @@ sudo systemctl status atalaya   # verificar
   - Dots animados con CSS `typing-bounce` mientras el agente genera respuesta
   - Muestra avatar del agente activo (Shaula, Atlas o Electra según modo)
   - Se elimina automáticamente cuando termina el stream o si hay error
-- [ ] Unificar topics y materias: materia_id en notas, filtro en notas_router
+- [x] Unificar topics y materias: materia_id en notas (migración idempotente), filtro por materia_id en notas_router, búsqueda de notas en context_builder por materia_id
+  - topics sigue existiendo como sistema legacy (no se eliminan datos)
+  - notas.materia_id → FK opcional a materias(id)
+  - context_builder ahora busca en 4 fuentes: apuntes Cornell, referencias, notas por materia, documentos
 
 - [x] Tests backend: test_srs_engine.py (8 tests), test_extractor.py (10 tests), conftest.py con fixture DB en memoria
   - Correr con: `pytest tests/ -v`
