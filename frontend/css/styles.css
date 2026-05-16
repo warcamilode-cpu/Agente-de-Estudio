@@ -1720,3 +1720,28 @@ label {
   color: var(--text-muted);
   max-width: 56px;
 }
+
+/* ── Typing indicator (escribiendo...) ── */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: .55rem .75rem;
+  background: var(--surface2);
+  border-radius: 12px;
+  border-bottom-left-radius: 3px;
+}
+.typing-indicator span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: typing-bounce .9s ease-in-out infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: .15s; }
+.typing-indicator span:nth-child(3) { animation-delay: .3s;  }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0);    opacity: .5; }
+  30%           { transform: translateY(-6px); opacity: 1;  }
+}

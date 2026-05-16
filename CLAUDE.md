@@ -337,7 +337,10 @@ sudo systemctl status atalaya   # verificar
   - Errores HTTP retornan `{"error": true, "detail": "...", "code": N}`
   - Stream de Shaula captura excepciones y devuelve mensaje de error en vez de romper la conexión
   - slowapi agregado a requirements.txt
-- [ ] Indicador "escribiendo…" en chat.js y plan.js
+- [x] Indicador "escribiendo…" en chat.js y plan.js
+  - Dots animados con CSS `typing-bounce` mientras el agente genera respuesta
+  - Muestra avatar del agente activo (Shaula, Atlas o Electra según modo)
+  - Se elimina automáticamente cuando termina el stream o si hay error
 - [ ] Unificar topics y materias: materia_id en notas, filtro en notas_router
 
 - [x] Tests backend: test_srs_engine.py (8 tests), test_extractor.py (10 tests), conftest.py con fixture DB en memoria

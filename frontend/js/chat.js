@@ -94,8 +94,11 @@ chatForm.addEventListener("submit", async e => {
   _agregarMensaje("user", texto);
 
   const materiaId = document.getElementById("chat-materia").value || null;
-  const burbuja = _agregarMensaje("assistant", "");
 
+  // Indicador "escribiendo..."
+  const indicador = _mostrarEscribiendo("shaula");
+
+  const burbuja = _agregarMensaje("assistant", "");
   const cursor = document.createElement("span");
   cursor.className = "cursor-blink";
   cursor.textContent = "▍";
@@ -138,8 +141,10 @@ chatForm.addEventListener("submit", async e => {
       }
     }
   } catch (err) {
-    acumulado = "Error al conectar con el servidor.";
+    acumulado = "Error de conexión. Intentá de nuevo.";
     console.error(err);
+  } finally {
+    indicador.remove();
   }
 
   cursor.remove();
@@ -224,4 +229,16 @@ function _avatarImg(nombre, icon) {
 
 function _esc(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+}
+
+function _mostrarEscribiendo(agente) {
+  const contenedor = document.getElementById("chat-mensajes");
+  const row = document.createElement("div");
+  row.className = "msg-row assistant typing-row";
+  row.innerHTML = `
+    <div class="msg-avatar">${_avatarImg(agente, "fi-rr-star")}</div>
+    <div class="typing-indicator"><span></span><span></span><span></span></div>`;
+  contenedor.appendChild(row);
+  contenedor.scrollTop = contenedor.scrollHeight;
+  return row;
 }

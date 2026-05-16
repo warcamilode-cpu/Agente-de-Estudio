@@ -288,6 +288,10 @@ async function _enviarPregunta(e) {
   // Burbuja usuario con avatar
   _planBurbuja(msgArea, "user", texto);
 
+  // Indicador "escribiendo..."
+  const agenteActivo = _modoEval ? "electra" : "atlas";
+  const indicadorPlan = _mostrarEscribiendoPlan(msgArea, agenteActivo);
+
   // Burbuja asistente (vacía con cursor)
   const asstDiv = _planBurbuja(msgArea, "assistant", "");
   const cursor = document.createElement("span");
@@ -336,8 +340,10 @@ async function _enviarPregunta(e) {
       }
     }
   } catch (err) {
-    acumulado = "Error al conectar con Shaula.";
+    acumulado = "Error de conexión. Intentá de nuevo.";
     console.error(err);
+  } finally {
+    indicadorPlan.remove();
   }
 
   cursor.remove();
@@ -491,4 +497,16 @@ function _iniciarNotificaciones() {
 
 function _avatarImg(nombre, icon) {
   return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
+}
+
+function _mostrarEscribiendoPlan(contenedor, agente) {
+  const iconos = { atlas: "fi-rr-graduation-cap", electra: "fi-rr-bolt" };
+  const row = document.createElement("div");
+  row.className = "msg-row assistant typing-row";
+  row.innerHTML = `
+    <div class="msg-avatar">${_avatarImg(agente, iconos[agente] || "fi-rr-star")}</div>
+    <div class="typing-indicator"><span></span><span></span><span></span></div>`;
+  contenedor.appendChild(row);
+  contenedor.scrollTop = contenedor.scrollHeight;
+  return row;
 }
