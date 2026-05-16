@@ -333,7 +333,10 @@ sudo systemctl status atalaya   # verificar
 - [ ] Voz conversacional con Kokoro TTS (Fase 4)
 - [ ] Búsqueda semántica con sqlite-vec en context_builder (reemplaza BM25)
 - [ ] Tests de integración para dashboard (mock de DB)
-- [ ] Rate limiting con slowapi + exception handler global en main.py
+- [x] Rate limiting con slowapi (60 req/min global) + exception handler global en main.py
+  - Errores HTTP retornan `{"error": true, "detail": "...", "code": N}`
+  - Stream de Shaula captura excepciones y devuelve mensaje de error en vez de romper la conexión
+  - slowapi agregado a requirements.txt
 - [ ] Indicador "escribiendo…" en chat.js y plan.js
 - [ ] Unificar topics y materias: materia_id en notas, filtro en notas_router
 

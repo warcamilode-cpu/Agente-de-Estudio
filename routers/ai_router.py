@@ -73,15 +73,19 @@ def chat_stream(body: ChatIn):
     respuesta_acumulada: list[str] = []
 
     def _generar():
-        for chunk in llm_client.preguntar_stream(system_prompt, historial[-MAX_HISTORIAL:]):
-            respuesta_acumulada.append(chunk)
-            yield f"data: {json.dumps(chunk)}\n\n"
+        try:
+            for chunk in llm_client.preguntar_stream(system_prompt, historial[-MAX_HISTORIAL:]):
+                respuesta_acumulada.append(chunk)
+                yield f"data: {json.dumps(chunk)}\n\n"
 
-        respuesta = "".join(respuesta_acumulada)
-        historial.append({"role": "assistant", "content": respuesta})
-        _guardar_mensaje(body.session_id, "assistant", respuesta)
-        _tocar_sesion(body.session_id)
-        yield "data: [DONE]\n\n"
+            respuesta = "".join(respuesta_acumulada)
+            historial.append({"role": "assistant", "content": respuesta})
+            _guardar_mensaje(body.session_id, "assistant", respuesta)
+            _tocar_sesion(body.session_id)
+        except Exception:
+            yield f"data: {json.dumps('⚠️ Error al conectar con el modelo. Intentá de nuevo.')}\n\n"
+        finally:
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(_generar(), media_type="text/event-stream")
 
