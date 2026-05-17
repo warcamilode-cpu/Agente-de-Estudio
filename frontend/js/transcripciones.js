@@ -1,6 +1,9 @@
 // Módulo de transcripciones de audio/video (Whisper)
 
-let _transActual = null;
+let _transActual  = null;
+let _cargaActiva  = false;
+let _cargaTimer   = null;
+let _cargaInicio  = null;
 
 // ── Inicialización ──────────────────────────────────────────────
 document.addEventListener('tabchange', e => {
@@ -11,6 +14,7 @@ document.getElementById('trans-filtro-materia').addEventListener('change', carga
 
 // ── Listar ──────────────────────────────────────────────────────
 async function cargarTranscripciones() {
+  if (_cargaActiva) return;
   const lista  = document.getElementById('trans-lista');
   const filtro = document.getElementById('trans-filtro-materia').value;
   lista.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem 0;">Cargando…</p>';
@@ -79,22 +83,14 @@ async function subirAudio() {
   if (!archivo) { toast('Seleccioná un archivo de audio o video.'); return; }
   if (!titulo)  { toast('Escribí un título para identificar la clase.'); return; }
 
-  const btn = document.getElementById('btn-trans-subir');
-  btn.disabled = true;
-
-  const _fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-  let _segs = 0;
-  const _timer = setInterval(() => {
-    _segs++;
-    btn.textContent = `Procesando… ${_fmt(_segs)}`;
-  }, 1000);
-  btn.textContent = 'Procesando… 00:00';
-
   const fd = new FormData();
   fd.append('archivo', archivo);
   fd.append('titulo',  titulo);
   fd.append('idioma',  idioma);
   if (materia) fd.append('materia_id', parseInt(materia));
+
+  cerrarModalSubirAudio();
+  _iniciarCarga(titulo);
 
   try {
     const r = await fetch('/transcripciones', { method: 'POST', body: fd });
@@ -103,17 +99,54 @@ async function subirAudio() {
       throw new Error(err.detail || 'Error al transcribir');
     }
     const resultado = await r.json();
-    cerrarModalSubirAudio();
+    _detenerCarga();
     toast('Transcripción completada ✓');
     cargarTranscripciones();
     verTranscripcion(resultado.id);
   } catch(e) {
+    _detenerCarga();
     toast('Error: ' + e.message, 5000);
-  } finally {
-    clearInterval(_timer);
-    btn.disabled    = false;
-    btn.textContent = 'Transcribir';
+    cargarTranscripciones();
   }
+}
+
+function _iniciarCarga(titulo) {
+  _cargaActiva = true;
+  _cargaInicio = Date.now();
+
+  if (!document.getElementById('_trans-anim-style')) {
+    const s = document.createElement('style');
+    s.id = '_trans-anim-style';
+    s.textContent = '@keyframes _tshimmer{0%{left:-35%}100%{left:110%}}';
+    document.head.appendChild(s);
+  }
+
+  const fmt  = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const lista = document.getElementById('trans-lista');
+  lista.innerHTML = `
+    <div id="trans-card-carga" class="card" style="padding:.75rem .85rem;">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;">
+        <div style="font-size:1.4rem;flex-shrink:0;">🎙</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_tEsc(titulo)}</div>
+          <div style="font-size:.75rem;color:var(--text-muted);">Transcribiendo… <span id="_trans-elapsed">00:00</span></div>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--border,#e2e8f0);border-radius:2px;overflow:hidden;position:relative;">
+        <div style="position:absolute;top:0;height:100%;width:35%;background:var(--accent,#6366f1);border-radius:2px;animation:_tshimmer 1.5s linear infinite;"></div>
+      </div>
+    </div>`;
+
+  _cargaTimer = setInterval(() => {
+    const el = document.getElementById('_trans-elapsed');
+    if (el) el.textContent = fmt(Math.floor((Date.now() - _cargaInicio) / 1000));
+  }, 1000);
+}
+
+function _detenerCarga() {
+  _cargaActiva = false;
+  if (_cargaTimer) { clearInterval(_cargaTimer); _cargaTimer = null; }
+  _cargaInicio = null;
 }
 
 // ── Ver transcripción ────────────────────────────────────────────

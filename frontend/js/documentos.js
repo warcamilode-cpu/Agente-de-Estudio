@@ -319,7 +319,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const maiaInput    = document.getElementById("maia-input");
   const maiaTokCount = document.getElementById("maia-tok-count");
   if (maiaInput && maiaTokCount) {
+    maiaInput.style.resize   = "none";
+    maiaInput.style.overflow = "hidden";
     maiaInput.addEventListener("input", () => {
+      maiaInput.style.height = "auto";
+      maiaInput.style.height = maiaInput.scrollHeight + "px";
       const est = Math.round(maiaInput.value.length / 4);
       maiaTokCount.textContent = est > 0 ? `~${est} tok` : "";
     });
