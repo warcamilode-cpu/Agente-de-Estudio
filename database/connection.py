@@ -189,6 +189,7 @@ def _migraciones(conn: sqlite3.Connection) -> None:
                 session_id     TEXT PRIMARY KEY,
                 titulo         TEXT DEFAULT 'Nueva sesión',
                 topic_id       INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+                materia_id     INTEGER REFERENCES materias(id) ON DELETE SET NULL,
                 creado_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 actualizado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -263,12 +264,46 @@ def _migraciones(conn: sqlite3.Connection) -> None:
             CREATE INDEX idx_embeddings_doc ON chunk_embeddings(doc_id);
         """)
 
+    # Migración de dims: float[384] → float[1024] (bge-m3 via Ollama reemplaza all-MiniLM)
+    vec_sql_row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name='vec_chunks'"
+    ).fetchone()
+    if vec_sql_row and vec_sql_row[0] and "float[384]" in vec_sql_row[0]:
+        try:
+            conn.execute("DROP TABLE IF EXISTS vec_chunks")
+            conn.execute("DELETE FROM chunk_embeddings")
+            # Los documentos quedan intactos; re-indexar subiendo de nuevo o via /documentos/reindexar
+        except Exception:
+            pass
+
+    # Migración: columna texto_raw en transcripciones (puede faltar en DBs creadas antes)
+    if "transcripciones" in tablas:
+        cols_trans = {r[1] for r in conn.execute("PRAGMA table_info(transcripciones)")}
+        if "texto_raw" not in cols_trans:
+            conn.execute("ALTER TABLE transcripciones ADD COLUMN texto_raw TEXT DEFAULT ''")
+
+    # Migración: tabla de transcripciones (Whisper.cpp)
+    if "transcripciones" not in tablas:
+        conn.executescript("""
+            CREATE TABLE transcripciones (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo         TEXT NOT NULL,
+                archivo_nombre TEXT NOT NULL,
+                texto          TEXT NOT NULL,
+                texto_raw      TEXT DEFAULT '',
+                idioma         TEXT DEFAULT 'es',
+                materia_id     INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+                creado_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_transcripciones_materia ON transcripciones(materia_id);
+        """)
+
     # Tabla virtual vec0 (sqlite-vec) — solo si la extensión está disponible
     tablas_actualizadas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if "vec_chunks" not in tablas_actualizadas:
         try:
             conn.execute(
-                "CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[384])"
+                "CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])"
             )
         except Exception:
             pass  # sqlite-vec no disponible; se usará chunk_embeddings como fallback

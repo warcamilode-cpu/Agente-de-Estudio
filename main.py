@@ -15,7 +15,7 @@ configurar_logging(nivel=os.getenv("LOG_NIVEL", "INFO"))
 
 from database.connection import init_db
 from routers import ai_router, notas_router, flashcards_router, topics_router, dashboard_router
-from routers import documentos_router, plan_router, cuaderno_router
+from routers import documentos_router, plan_router, cuaderno_router, transcripciones_router
 
 
 @asynccontextmanager
@@ -55,6 +55,7 @@ app.include_router(dashboard_router.router)
 app.include_router(documentos_router.router)
 app.include_router(plan_router.router)
 app.include_router(cuaderno_router.router)
+app.include_router(transcripciones_router.router)
 
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
