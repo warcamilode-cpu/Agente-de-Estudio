@@ -163,7 +163,7 @@ def _preguntar_stream_ollama(
                     tokens_in = data.get("prompt_eval_count", 0)
                     tokens_out = data.get("eval_count", 0)
 
-    yield from _filtrar_think(_raw())
+    yield from _raw()
     dur = time.monotonic() - t0
     log.info(
         "LLM stream | modelo=%s tokens_in=%d tokens_out=%d dur=%.1fs",
