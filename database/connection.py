@@ -276,6 +276,21 @@ def _migraciones(conn: sqlite3.Connection) -> None:
         except Exception:
             pass
 
+    # Migración: tabla de transcripciones (Whisper.cpp)
+    if "transcripciones" not in tablas:
+        conn.executescript("""
+            CREATE TABLE transcripciones (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo         TEXT NOT NULL,
+                archivo_nombre TEXT NOT NULL,
+                texto          TEXT NOT NULL,
+                idioma         TEXT DEFAULT 'es',
+                materia_id     INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+                creado_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_transcripciones_materia ON transcripciones(materia_id);
+        """)
+
     # Tabla virtual vec0 (sqlite-vec) — solo si la extensión está disponible
     tablas_actualizadas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if "vec_chunks" not in tablas_actualizadas:
