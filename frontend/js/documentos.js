@@ -234,10 +234,11 @@ async function _enviarMaia(e) {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        doc_id:    docId ? +docId : null,
-        trans_id:  window._maiaTransId || null,
-        mensaje:   texto,
-        historial: _maiaHistorial.slice(-10),
+        doc_id:     docId ? +docId : null,
+        trans_id:   window._maiaTransId || null,
+        materia_id: +document.getElementById("docs-filtro-materia")?.value || null,
+        mensaje:    texto,
+        historial:  _maiaHistorial.slice(-10),
       }),
     });
 
@@ -319,13 +320,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const maiaInput    = document.getElementById("maia-input");
   const maiaTokCount = document.getElementById("maia-tok-count");
   if (maiaInput && maiaTokCount) {
-    maiaInput.style.resize   = "none";
-    maiaInput.style.overflow = "hidden";
     maiaInput.addEventListener("input", () => {
       maiaInput.style.height = "auto";
       maiaInput.style.height = maiaInput.scrollHeight + "px";
       const est = Math.round(maiaInput.value.length / 4);
       maiaTokCount.textContent = est > 0 ? `~${est} tok` : "";
+    });
+    maiaInput.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById("maia-form").requestSubmit();
+      }
     });
   }
 });

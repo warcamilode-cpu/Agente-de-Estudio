@@ -213,7 +213,7 @@
           <form id="maia-form" style="display:flex; gap:.5rem; padding:var(--gap); padding-top:.5rem; border-top:1px solid var(--border); flex-shrink:0;">
             <select id="maia-doc-sel" style="max-width:200px;"><option value="">— Todos los docs —</option></select>
             <div style="flex:1; position:relative; display:flex; align-items:center;">
-              <input id="maia-input" type="text" placeholder="Preguntale a Maia sobre los documentos…" style="width:100%; padding-right:3.5rem;" autocomplete="off">
+              <textarea id="maia-input" rows="1" placeholder="Preguntale a Maia sobre los documentos…" style="width:100%; padding-right:3.5rem; resize:none; overflow:hidden; min-height:unset; height:auto; line-height:1.5;" autocomplete="off"></textarea>
               <span id="maia-tok-count" class="tok-badge"></span>
             </div>
             <button type="submit" class="btn btn-primary">Preguntar</button>
