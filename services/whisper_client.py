@@ -17,15 +17,28 @@ log = logging.getLogger(__name__)
 
 _WHISPER_URL = os.getenv("WHISPER_URL", "http://127.0.0.1:8765")
 
+_MIME = {
+    ".mp3":  "audio/mpeg",
+    ".mp4":  "video/mp4",
+    ".wav":  "audio/wav",
+    ".m4a":  "audio/mp4",
+    ".ogg":  "audio/ogg",
+    ".webm": "audio/webm",
+    ".mkv":  "video/x-matroska",
+    ".flac": "audio/flac",
+}
+
 
 def transcribir(ruta_audio: str, idioma: str = "es") -> str:
     """Envía el archivo de audio a whisper-server y retorna el texto transcripto."""
     nombre = os.path.basename(ruta_audio)
-    log.info("Whisper: iniciando transcripción de '%s' (idioma=%s)", nombre, idioma)
+    ext    = os.path.splitext(nombre)[1].lower()
+    mime   = _MIME.get(ext, "application/octet-stream")
+    log.info("Whisper: iniciando transcripción de '%s' (idioma=%s, mime=%s)", nombre, idioma, mime)
     with open(ruta_audio, "rb") as f:
         resp = httpx.post(
             f"{_WHISPER_URL}/inference",
-            files={"file": (nombre, f, "audio/mpeg")},
+            files={"file": (nombre, f, mime)},
             data={"language": idioma},
             timeout=httpx.Timeout(10.0, read=600.0),
         )
