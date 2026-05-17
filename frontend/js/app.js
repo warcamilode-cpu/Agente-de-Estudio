@@ -1,6 +1,6 @@
 // Router de tabs, sidebar y utilidades globales
 
-const TABS = ["chat", "cuaderno", "flashcards", "documentos", "plan", "dashboard"];
+const TABS = ["chat", "cuaderno", "flashcards", "documentos", "transcripciones", "plan", "dashboard"];
 
 // ── Sidebar toggle ──────────────────────────────────────────────
 const sidebar       = document.getElementById("sidebar");
@@ -39,10 +39,11 @@ function cambiarTab(nombre) {
   document.querySelectorAll(".section").forEach(s =>
     s.classList.toggle("active", s.id === `tab-${nombre}`)
   );
-  if (nombre === "cuaderno")   cargarCuaderno();
-  if (nombre === "flashcards") cargarFlashcards();
-  if (nombre === "documentos") cargarDocumentos();
-  if (nombre === "dashboard")  cargarDashboard();
+  if (nombre === "cuaderno")        cargarCuaderno();
+  if (nombre === "flashcards")      cargarFlashcards();
+  if (nombre === "documentos")      cargarDocumentos();
+  if (nombre === "transcripciones") cargarTranscripciones();
+  if (nombre === "dashboard")       cargarDashboard();
 
   document.dispatchEvent(new CustomEvent("tabchange", { detail: nombre }));
   if (window.innerWidth < 640) _aplicarEstadoSidebar(true);
@@ -86,8 +87,8 @@ async function cargarEstructura() {
 }
 
 function _poblarSelects() {
-  const filtroIds = ["chat-materia", "fc-filtro-materia", "docs-filtro-materia", "plan-materia-sel"];
-  const modalIds  = ["mc-materia", "docs-materia"];
+  const filtroIds = ["chat-materia", "fc-filtro-materia", "docs-filtro-materia", "trans-filtro-materia", "plan-materia-sel"];
+  const modalIds  = ["mc-materia", "docs-materia", "ta-materia"];
 
   filtroIds.forEach(id => {
     const sel = document.getElementById(id);

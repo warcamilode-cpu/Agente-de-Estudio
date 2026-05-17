@@ -50,6 +50,10 @@
           <span class="nav-icon"><i class="fi fi-rr-folder"></i></span>
           <span class="nav-label">Documentos</span>
         </button>
+        <button class="nav-item" data-tab="transcripciones">
+          <span class="nav-icon"><i class="fi fi-rr-microphone"></i></span>
+          <span class="nav-label">Transcripciones</span>
+        </button>
       </div>
       <div class="nav-section">
         <span class="nav-section-label">Planificación</span>
@@ -375,6 +379,18 @@
 
       </section>
 
+      <!-- ── TRANSCRIPCIONES ── -->
+      <section id="tab-transcripciones" class="section" style="padding:0; overflow:hidden; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:.6rem; padding:.65rem var(--gap) .4rem; flex-shrink:0; border-bottom:1px solid var(--border);">
+          <select id="trans-filtro-materia" style="flex:1; min-width:0;"><option value="">Todas las materias</option></select>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalSubirAudio()"><i class="fi fi-rr-microphone"></i> Transcribir</button>
+        </div>
+        <p style="padding:.3rem var(--gap); font-size:.78rem; color:var(--text-muted); flex-shrink:0; margin:0;">MP3 · MP4 · WAV · M4A · OGG · WebM · MKV · FLAC</p>
+        <div id="trans-lista" style="flex:1; overflow-y:auto; padding:var(--gap); display:flex; flex-direction:column; gap:.5rem;">
+          <p style="color:var(--text-muted); text-align:center;">Cargando…</p>
+        </div>
+      </section>
+
       <!-- ── DASHBOARD ── -->
       <section id="tab-dashboard" class="section">
         <h2>Resumen de hoy</h2>
@@ -572,6 +588,53 @@
   </div>
 </div>
 
+<!-- Modal subir audio para transcripción -->
+<div class="modal-overlay" id="modal-subir-audio">
+  <div class="modal">
+    <h2>Transcribir audio / video</h2>
+    <div><label>Archivo</label><input id="ta-archivo" type="file" accept=".mp3,.mp4,.wav,.m4a,.ogg,.webm,.mkv,.flac"></div>
+    <div><label>Título de la clase</label><input id="ta-titulo" type="text" placeholder="Ej: Clase 5 — Acción de tutela"></div>
+    <div>
+      <label>Idioma</label>
+      <select id="ta-idioma">
+        <option value="es">Español</option>
+        <option value="en">Inglés</option>
+        <option value="auto">Detección automática</option>
+      </select>
+    </div>
+    <div><label>Materia (opcional)</label><select id="ta-materia"><option value="">— Sin materia —</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalSubirAudio()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-trans-subir" onclick="subirAudio()">Transcribir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal visor de transcripción -->
+<div class="modal-overlay" id="modal-trans-visor">
+  <div class="modal" style="max-width:860px; width:95vw;">
+    <div class="modal-top">
+      <h2 id="mtv-titulo" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;"></h2>
+      <button class="btn-cerrar-modal-rojo" onclick="cerrarVisorTrans()" title="Cerrar">✕</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-bottom:.6rem; padding-bottom:.6rem; border-bottom:1px solid var(--border);">
+      <span id="mtv-materia" style="font-size:.8rem; background:var(--accent-soft); color:var(--accent); padding:.15rem .5rem; border-radius:999px; font-weight:600;"></span>
+      <span id="mtv-idioma" style="font-size:.78rem; color:var(--text-muted);"></span>
+      <span id="mtv-fecha"  style="font-size:.78rem; color:var(--text-muted); flex:1; text-align:right;"></span>
+    </div>
+    <div style="display:flex; gap:.5rem; margin-bottom:.6rem; flex-shrink:0; align-items:center;">
+      <button class="btn btn-secondary btn-sm" id="mtv-btn-md"  onclick="_transMostrar('md')">Formateado</button>
+      <button class="btn btn-secondary btn-sm" id="mtv-btn-raw" onclick="_transMostrar('raw')">Texto crudo</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-secondary btn-sm" onclick="_transEnviarMaia()"><i class="fi fi-rr-search"></i> Enviar a Maia</button>
+    </div>
+    <div id="mtv-cuerpo" style="max-height:65dvh; overflow-y:auto; font-size:.88rem; line-height:1.8;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarVisorTrans()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
@@ -583,6 +646,7 @@
 <script src="/static/js/documentos.js"></script>
 <script src="/static/js/plan.js"></script>
 <script src="/static/js/dashboard.js"></script>
+<script src="/static/js/transcripciones.js"></script>
 <script src="/static/js/sprites.js"></script>
 </body>
 </html>
