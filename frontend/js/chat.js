@@ -232,7 +232,7 @@ function _esc(str) {
 }
 
 function _mostrarEscribiendo(agente) {
-  const contenedor = document.getElementById("chat-mensajes");
+  const contenedor = mensajesEl;
   const row = document.createElement("div");
   row.className = "msg-row assistant typing-row";
   row.innerHTML = `
