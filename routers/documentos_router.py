@@ -287,7 +287,9 @@ def analisis_stream(payload: MaiaIn):
                 (payload.materia_id,),
             ).fetchall()
         else:
-            rows = []
+            rows = conn.execute(
+                "SELECT dc.texto FROM documento_chunks dc ORDER BY dc.doc_id, dc.chunk_idx"
+            ).fetchall()
 
         if rows:
             scored = sorted(
@@ -321,12 +323,16 @@ def analisis_stream(payload: MaiaIn):
             t_scored = sorted(t_chunks, key=lambda c: -_score_bm25(c, terminos))
             t_top = [c for c in t_scored[:40] if _score_bm25(c, terminos) > 0] or t_scored[:20]
             trans_ctx = f"[Transcripción: {trow['titulo']}]\n" + "\n\n".join(t_top)
-    elif payload.materia_id is not None and payload.doc_id is None:
+    else:
+        # Sin filtro específico: buscar en todas las transcripciones por relevancia BM25
         with db() as conn:
-            t_rows = conn.execute(
-                "SELECT titulo, texto FROM transcripciones WHERE materia_id = ? ORDER BY creado_at DESC LIMIT 5",
-                (payload.materia_id,),
-            ).fetchall()
+            t_query = (
+                "SELECT titulo, texto FROM transcripciones WHERE materia_id = ? ORDER BY creado_at DESC LIMIT 5"
+                if payload.materia_id is not None
+                else "SELECT titulo, texto FROM transcripciones ORDER BY creado_at DESC LIMIT 5"
+            )
+            t_params = (payload.materia_id,) if payload.materia_id is not None else ()
+            t_rows = conn.execute(t_query, t_params).fetchall()
         all_chunks: list[str] = []
         for tr in t_rows:
             if tr["texto"]:

@@ -272,11 +272,57 @@ def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 5) ->
     return "\n\n---\n\n".join(fragmentos), len(por_doc)
 
 
+def _buscar_transcripciones(mensaje: str, materia_id: int | None, limite: int = 3) -> tuple[str, int]:
+    """Busca en transcripciones de clases usando BM25-lite sobre ventanas de texto."""
+    terminos = [t for t in mensaje.lower().split() if len(t) > 2]
+
+    with db() as conn:
+        if materia_id is not None:
+            rows = conn.execute(
+                "SELECT titulo, texto FROM transcripciones WHERE materia_id = ? ORDER BY creado_at DESC LIMIT 8",
+                (materia_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT titulo, texto FROM transcripciones ORDER BY creado_at DESC LIMIT 8"
+            ).fetchall()
+
+    if not rows:
+        return "", 0
+
+    scored: list[tuple[float, str, str]] = []
+    for r in rows:
+        if not r["texto"]:
+            continue
+        palabras = r["texto"].split()
+        for i in range(0, len(palabras), 200):
+            chunk = " ".join(palabras[i : i + 200])
+            score = _bm25_score(chunk, terminos) if terminos else 0.0
+            if score > 0:
+                scored.append((score, chunk, r["titulo"]))
+
+    if not scored:
+        return "", 0
+
+    scored.sort(key=lambda x: -x[0])
+    por_titulo: dict[str, list[str]] = {}
+    for _, chunk, titulo in scored[: limite * 4]:
+        por_titulo.setdefault(titulo, []).append(chunk)
+
+    fragmentos = []
+    for titulo, chunks in list(por_titulo.items())[:limite]:
+        cuerpo = "\n\n[...]\n\n".join(chunks[:3])
+        fragmentos.append(f"### Transcripción de clase: {titulo}\n{cuerpo}")
+
+    return "\n\n".join(fragmentos), len(fragmentos)
+
+
 def construir_contexto(mensaje: str, materia_id: int | None) -> tuple[str, int]:
     apuntes_txt, n_ap   = _buscar_apuntes(mensaje, materia_id, limite=4)
     refs_txt,    n_refs = _buscar_referencias(mensaje, materia_id, limite=6)
     docs_txt,    n_docs = _buscar_documentos(mensaje, materia_id, limite=3)
     notas_txt,   n_not  = _buscar_notas_materia(mensaje, materia_id, limite=3)
+    trans_txt,   n_tra  = _buscar_transcripciones(mensaje, materia_id, limite=3)
 
     partes = []
     if apuntes_txt:
@@ -287,8 +333,10 @@ def construir_contexto(mensaje: str, materia_id: int | None) -> tuple[str, int]:
         partes.append("## Notas de estudio\n\n" + notas_txt)
     if docs_txt:
         partes.append("## Documentos / lecturas\n\n" + docs_txt)
+    if trans_txt:
+        partes.append("## Transcripciones de clase\n\n" + trans_txt)
 
-    return "\n\n".join(partes), n_ap + n_refs + n_docs + n_not
+    return "\n\n".join(partes), n_ap + n_refs + n_docs + n_not + n_tra
 
 
 def construir_system_prompt(contexto: str) -> str:
