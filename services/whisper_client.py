@@ -31,8 +31,12 @@ def transcribir(ruta_audio: str, idioma: str = "es") -> str:
         )
     resp.raise_for_status()
     data = resp.json()
-    texto = data.get("text", "").strip()
-    log.info("Whisper: transcripción completada — %d caracteres", len(texto))
+    segments = data.get("segments", [])
+    if segments:
+        texto = "\n".join(s["text"].strip() for s in segments if s.get("text", "").strip())
+    else:
+        texto = data.get("text", "").strip()
+    log.info("Whisper: transcripción completada — %d segmentos, %d caracteres", len(segments), len(texto))
     return texto
 
 
