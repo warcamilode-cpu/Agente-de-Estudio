@@ -284,6 +284,7 @@ def _migraciones(conn: sqlite3.Connection) -> None:
                 titulo         TEXT NOT NULL,
                 archivo_nombre TEXT NOT NULL,
                 texto          TEXT NOT NULL,
+                texto_raw      TEXT DEFAULT '',
                 idioma         TEXT DEFAULT 'es',
                 materia_id     INTEGER REFERENCES materias(id) ON DELETE SET NULL,
                 creado_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
