@@ -3,7 +3,7 @@ import shutil
 import uuid
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from database.connection import db
-from services import whisper_client, llm_client
+from services import whisper_client
 
 router = APIRouter(prefix="/transcripciones", tags=["transcripciones"])
 
@@ -11,33 +11,6 @@ _UPLOADS = "uploads/audio"
 os.makedirs(_UPLOADS, exist_ok=True)
 
 _EXTENSIONES = {".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".webm", ".mkv", ".flac"}
-
-_SYSTEM_FORMATEADOR = """Sos un asistente especializado en estructurar transcripciones de clases académicas en español colombiano.
-Te dan el texto crudo de una transcripción de audio y tenés que convertirlo en Markdown bien estructurado.
-
-Reglas estrictas:
-- Usá ## para los temas principales que identifiques en la clase
-- Usá ### para subtemas o conceptos secundarios
-- Separaá en párrafos temáticos coherentes
-- Poné en **negrita** los conceptos clave, términos técnicos, artículos de ley y definiciones importantes
-- Si hay listas o enumeraciones implícitas, convertílas en listas con guiones (-)
-- Corregí la puntuación y las mayúsculas
-- NO agregues contenido que no esté en la transcripción
-- NO agregues introducción ni conclusión propias
-- Devolvé únicamente el Markdown estructurado, sin comentarios ni explicaciones"""
-
-
-def _formatear_con_qwen3(texto_raw: str, titulo: str) -> str:
-    """Pasa el texto crudo por Qwen3 para estructurarlo en Markdown."""
-    prompt = f"Título de la clase: {titulo}\n\nTranscripción cruda:\n\n{texto_raw}"
-    try:
-        return llm_client.preguntar(
-            _SYSTEM_FORMATEADOR,
-            [{"role": "user", "content": prompt}],
-            modo_think=False,
-        )
-    except Exception:
-        return texto_raw  # fallback: devuelve el texto sin formatear
 
 
 @router.post("")
@@ -60,27 +33,24 @@ def transcribir_audio(
         shutil.copyfileobj(archivo.file, f)
 
     try:
-        texto_raw = whisper_client.transcribir(ruta, idioma=idioma)
+        texto = whisper_client.transcribir(ruta, idioma=idioma)
     except Exception as e:
         os.remove(ruta)
         raise HTTPException(status_code=500, detail=f"Error al transcribir: {e}")
-
-    texto_markdown = _formatear_con_qwen3(texto_raw, titulo)
 
     with db() as conn:
         cur = conn.execute(
             """INSERT INTO transcripciones (titulo, archivo_nombre, texto, texto_raw, idioma, materia_id)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (titulo, nombre_archivo, texto_markdown, texto_raw, idioma, materia_id),
+            (titulo, nombre_archivo, texto, texto, idioma, materia_id),
         )
         trans_id = cur.lastrowid
 
     return {
         "id": trans_id,
         "titulo": titulo,
-        "texto": texto_markdown,
-        "texto_raw": texto_raw,
-        "caracteres": len(texto_markdown),
+        "texto": texto,
+        "caracteres": len(texto),
     }
 
 

@@ -1,7 +1,6 @@
-// Módulo de transcripciones de audio/video (Whisper + Qwen3)
+// Módulo de transcripciones de audio/video (Whisper)
 
-let _transActual = null;  // transcripción abierta en el visor
-let _transModoVisor = 'md';
+let _transActual = null;
 
 // ── Inicialización ──────────────────────────────────────────────
 document.addEventListener('tabchange', e => {
@@ -12,8 +11,8 @@ document.getElementById('trans-filtro-materia').addEventListener('change', carga
 
 // ── Listar ──────────────────────────────────────────────────────
 async function cargarTranscripciones() {
-  const lista   = document.getElementById('trans-lista');
-  const filtro  = document.getElementById('trans-filtro-materia').value;
+  const lista  = document.getElementById('trans-lista');
+  const filtro = document.getElementById('trans-filtro-materia').value;
   lista.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem 0;">Cargando…</p>';
   try {
     const url  = filtro ? `/transcripciones?materia_id=${filtro}` : '/transcripciones';
@@ -28,13 +27,11 @@ async function cargarTranscripciones() {
     }
     lista.innerHTML = '';
     data.forEach(t => {
-      const div   = document.createElement('div');
+      const div = document.createElement('div');
       div.className = 'card';
       div.style.cssText = 'display:flex; align-items:center; gap:.75rem; cursor:pointer; padding:.65rem .85rem;';
       div.onclick = () => verTranscripcion(t.id);
-
-      const fecha = _tFecha(t.creado_at);
-      const mat   = t.materia_nombre && t.materia_nombre !== '—' ? t.materia_nombre : '';
+      const mat = t.materia_nombre && t.materia_nombre !== '—' ? t.materia_nombre : '';
       div.innerHTML = `
         <div style="font-size:1.4rem; flex-shrink:0; line-height:1;">🎙</div>
         <div style="flex:1; min-width:0;">
@@ -43,7 +40,7 @@ async function cargarTranscripciones() {
             ${mat ? `<span>${_tEsc(mat)}</span>` : ''}
             <span>${t.idioma.toUpperCase()}</span>
             <span>${(t.chars || 0).toLocaleString('es-CO')} chars</span>
-            <span>${fecha}</span>
+            <span>${_tFecha(t.creado_at)}</span>
           </div>
         </div>
         <button class="btn btn-danger btn-sm"
@@ -59,10 +56,10 @@ async function cargarTranscripciones() {
 
 // ── Subir audio ─────────────────────────────────────────────────
 function abrirModalSubirAudio() {
-  document.getElementById('ta-titulo').value    = '';
-  document.getElementById('ta-archivo').value   = '';
-  document.getElementById('ta-idioma').value    = 'es';
-  document.getElementById('ta-materia').value   = '';
+  document.getElementById('ta-titulo').value  = '';
+  document.getElementById('ta-archivo').value = '';
+  document.getElementById('ta-idioma').value  = 'es';
+  document.getElementById('ta-materia').value = '';
   const btn = document.getElementById('btn-trans-subir');
   btn.disabled    = false;
   btn.textContent = 'Transcribir';
@@ -102,7 +99,6 @@ async function subirAudio() {
     cerrarModalSubirAudio();
     toast('Transcripción completada ✓');
     cargarTranscripciones();
-    // Abrir visor inmediatamente
     verTranscripcion(resultado.id);
   } catch(e) {
     toast('Error: ' + e.message, 5000);
@@ -122,7 +118,7 @@ async function verTranscripcion(id) {
 
     const matEl = document.getElementById('mtv-materia');
     if (t.materia_nombre && t.materia_nombre !== '—') {
-      matEl.textContent = t.materia_nombre;
+      matEl.textContent   = t.materia_nombre;
       matEl.style.display = '';
     } else {
       matEl.style.display = 'none';
@@ -131,30 +127,14 @@ async function verTranscripcion(id) {
     document.getElementById('mtv-idioma').textContent = t.idioma.toUpperCase();
     document.getElementById('mtv-fecha').textContent  = _tFecha(t.creado_at);
 
-    _transMostrar('md');
+    const cuerpo = document.getElementById('mtv-cuerpo');
+    cuerpo.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit; font-size:.875rem; line-height:1.75;">${_tEsc(t.texto || '')}</pre>`;
+    cuerpo.scrollTop = 0;
+
     document.getElementById('modal-trans-visor').classList.add('open');
   } catch(e) {
     toast('No se pudo cargar la transcripción.');
   }
-}
-
-function _transMostrar(modo) {
-  if (!_transActual) return;
-  _transModoVisor = modo;
-  const cuerpo = document.getElementById('mtv-cuerpo');
-  const btnMd  = document.getElementById('mtv-btn-md');
-  const btnRaw = document.getElementById('mtv-btn-raw');
-
-  if (modo === 'md') {
-    cuerpo.innerHTML = marked.parse(_transActual.texto || '_Sin contenido._');
-    btnMd.style.fontWeight  = '700';
-    btnRaw.style.fontWeight = '';
-  } else {
-    cuerpo.innerHTML = `<pre style="white-space:pre-wrap; font-size:.82rem; color:var(--text-muted); font-family:inherit;">${_tEsc(_transActual.texto_raw || '(sin texto crudo)')}</pre>`;
-    btnMd.style.fontWeight  = '';
-    btnRaw.style.fontWeight = '700';
-  }
-  cuerpo.scrollTop = 0;
 }
 
 function cerrarVisorTrans() {
@@ -172,7 +152,6 @@ function _transEnviarMaia() {
     _docsTab('maia');
     const input = document.getElementById('maia-input');
     if (input) {
-      // Envía el inicio de la transcripción como contexto
       input.value = `Analizá esta transcripción de clase "${titulo}":\n\n${texto.substring(0, 3000)}${texto.length > 3000 ? '\n…[continúa]' : ''}`;
       input.focus();
     }
