@@ -235,6 +235,7 @@ async function _enviarMaia(e) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         doc_id:    docId ? +docId : null,
+        trans_id:  window._maiaTransId || null,
         mensaje:   texto,
         historial: _maiaHistorial.slice(-10),
       }),
@@ -407,4 +408,28 @@ async function _eliminarBiblioteca(id) {
 
 function _avatarImg(nombre, icon) {
   return `<img src="/static/img/${nombre}.png" class="msg-avatar-img" alt="${nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><i class="fi ${icon}" style="display:none;"></i>`;
+}
+
+// -- Indicador de transcripción activa en Maia -────────────────────
+function _actualizarIndicadorTrans() {
+  const existing = document.getElementById('maia-trans-indicator');
+  if (existing) existing.remove();
+  if (!window._maiaTransId || !window._maiaTransTitulo) return;
+
+  const el = document.createElement('div');
+  el.id = 'maia-trans-indicator';
+  el.style.cssText = 'display:flex; align-items:center; gap:.5rem; padding:.3rem .75rem; margin:.25rem var(--gap,1rem) 0; background:var(--surface-2,#f1f5f9); border-radius:6px; font-size:.75rem; border:1px solid var(--border,#e2e8f0);';
+  el.innerHTML = `
+    <span style="font-size:.9rem;">🎙</span>
+    <span>Contexto: <strong>${_htmlEsc(window._maiaTransTitulo)}</strong></span>
+    <button onclick="_limpiarTransMaia()" title="Quitar transcripción" style="margin-left:auto; background:none; border:none; cursor:pointer; color:var(--text-muted,#94a3b8); font-size:.875rem; padding:0 .2rem;">✕</button>
+  `;
+  const form = document.getElementById('maia-form');
+  if (form) form.parentNode.insertBefore(el, form);
+}
+
+function _limpiarTransMaia() {
+  window._maiaTransId     = null;
+  window._maiaTransTitulo = null;
+  _actualizarIndicadorTrans();
 }

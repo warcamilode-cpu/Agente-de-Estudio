@@ -189,6 +189,7 @@ def eliminar_documento(doc_id: int):
 
 class MaiaIn(BaseModel):
     doc_id: int | None = None
+    trans_id: int | None = None
     materia_id: int | None = None
     mensaje: str
     historial: list[dict] = []
@@ -306,6 +307,38 @@ def analisis_stream(payload: MaiaIn):
             ).fetchone()
             if row and row["contenido_texto"]:
                 contexto = row["contenido_texto"][:8000]
+
+    # Contexto de transcripción (trans_id explícito o por materia_id)
+    trans_ctx = ""
+    if payload.trans_id is not None:
+        with db() as conn:
+            trow = conn.execute(
+                "SELECT titulo, texto FROM transcripciones WHERE id = ?",
+                (payload.trans_id,),
+            ).fetchone()
+        if trow and trow["texto"]:
+            t_chunks = chunkear_texto(trow["texto"])
+            t_scored = sorted(t_chunks, key=lambda c: -_score_bm25(c, terminos))
+            t_top = [c for c in t_scored[:40] if _score_bm25(c, terminos) > 0] or t_scored[:20]
+            trans_ctx = f"[Transcripción: {trow['titulo']}]\n" + "\n\n".join(t_top)
+    elif payload.materia_id is not None and payload.doc_id is None:
+        with db() as conn:
+            t_rows = conn.execute(
+                "SELECT titulo, texto FROM transcripciones WHERE materia_id = ? ORDER BY creado_at DESC LIMIT 5",
+                (payload.materia_id,),
+            ).fetchall()
+        all_chunks: list[str] = []
+        for tr in t_rows:
+            if tr["texto"]:
+                all_chunks.extend(chunkear_texto(tr["texto"]))
+        if all_chunks:
+            t_scored = sorted(all_chunks, key=lambda c: -_score_bm25(c, terminos))
+            t_top = [c for c in t_scored[:20] if _score_bm25(c, terminos) > 0]
+            if t_top:
+                trans_ctx = "[Transcripciones de clase]\n" + "\n\n".join(t_top)
+
+    if trans_ctx:
+        contexto = (trans_ctx + "\n\n" + contexto).strip() if contexto else trans_ctx
 
     if not contexto:
         contexto = "No se encontró contenido de documentos para analizar."

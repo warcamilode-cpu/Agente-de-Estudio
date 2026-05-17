@@ -80,8 +80,15 @@ async function subirAudio() {
   if (!titulo)  { toast('Escribí un título para identificar la clase.'); return; }
 
   const btn = document.getElementById('btn-trans-subir');
-  btn.disabled    = true;
-  btn.textContent = 'Procesando… (puede tardar varios minutos)';
+  btn.disabled = true;
+
+  const _fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  let _segs = 0;
+  const _timer = setInterval(() => {
+    _segs++;
+    btn.textContent = `Procesando… ${_fmt(_segs)}`;
+  }, 1000);
+  btn.textContent = 'Procesando… 00:00';
 
   const fd = new FormData();
   fd.append('archivo', archivo);
@@ -103,6 +110,7 @@ async function subirAudio() {
   } catch(e) {
     toast('Error: ' + e.message, 5000);
   } finally {
+    clearInterval(_timer);
     btn.disabled    = false;
     btn.textContent = 'Transcribir';
   }
@@ -144,15 +152,17 @@ function cerrarVisorTrans() {
 
 function _transEnviarMaia() {
   if (!_transActual) return;
-  const titulo = _transActual.titulo;
-  const texto  = _transActual.texto || '';
+  window._maiaTransId     = _transActual.id;
+  window._maiaTransTitulo = _transActual.titulo;
+  const _titulo = _transActual.titulo;
   cerrarVisorTrans();
   cambiarTab('documentos');
   setTimeout(() => {
     _docsTab('maia');
+    if (typeof _actualizarIndicadorTrans === 'function') _actualizarIndicadorTrans();
     const input = document.getElementById('maia-input');
     if (input) {
-      input.value = `Analizá esta transcripción de clase "${titulo}":\n\n${texto.substring(0, 3000)}${texto.length > 3000 ? '\n…[continúa]' : ''}`;
+      input.value = `Analizá esta transcripción de clase "${_titulo}"`;
       input.focus();
     }
   }, 150);
