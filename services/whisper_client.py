@@ -21,7 +21,7 @@ load_dotenv()
 log = logging.getLogger(__name__)
 
 _DEVICE       = os.getenv("WHISPER_DEVICE", "cuda")
-_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
+_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")  # int8 funciona en Pascal (1080 Ti) y Ampere
 _MODEL_SIZE   = os.getenv("WHISPER_MODEL", "medium")
 
 _modelo = None
@@ -32,17 +32,21 @@ def _cargar_modelo():
     if _modelo is not None:
         return _modelo
     from faster_whisper import WhisperModel
-    log.info(
-        "Cargando faster-whisper: modelo=%s device=%s compute=%s",
-        _MODEL_SIZE, _DEVICE, _COMPUTE_TYPE,
-    )
-    try:
-        _modelo = WhisperModel(_MODEL_SIZE, device=_DEVICE, compute_type=_COMPUTE_TYPE)
-        log.info("faster-whisper listo en %s", _DEVICE)
-    except Exception as e:
-        log.warning("GPU no disponible (%s) — usando CPU int8", e)
-        _modelo = WhisperModel(_MODEL_SIZE, device="cpu", compute_type="int8")
-    return _modelo
+    # Orden de intentos: configurado → cuda/int8 → cpu/int8
+    intentos = [
+        (_DEVICE, _COMPUTE_TYPE),
+        ("cuda", "int8"),
+        ("cpu", "int8"),
+    ]
+    for device, compute in intentos:
+        try:
+            log.info("Cargando faster-whisper: modelo=%s device=%s compute=%s", _MODEL_SIZE, device, compute)
+            _modelo = WhisperModel(_MODEL_SIZE, device=device, compute_type=compute)
+            log.info("faster-whisper listo en %s/%s", device, compute)
+            return _modelo
+        except Exception as e:
+            log.warning("No se pudo cargar en %s/%s: %s", device, compute, e)
+    raise RuntimeError("No se pudo inicializar faster-whisper en ningún modo disponible.")
 
 
 def _convertir_a_wav(ruta_audio: str) -> tuple[str, bool]:
