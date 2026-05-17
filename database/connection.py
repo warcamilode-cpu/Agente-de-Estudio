@@ -189,6 +189,7 @@ def _migraciones(conn: sqlite3.Connection) -> None:
                 session_id     TEXT PRIMARY KEY,
                 titulo         TEXT DEFAULT 'Nueva sesión',
                 topic_id       INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+                materia_id     INTEGER REFERENCES materias(id) ON DELETE SET NULL,
                 creado_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 actualizado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
