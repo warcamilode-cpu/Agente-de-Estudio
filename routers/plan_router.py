@@ -127,6 +127,7 @@ def generar_plan_topico(body: PlanIn):
         _SYSTEM_PLANIFICADOR,
         [{"role": "user", "content": prompt_usuario}],
         max_tokens=8192,
+        modo_think=True,
     )
 
     with db() as conn:
@@ -191,7 +192,7 @@ def chat_planificador(body: PlanChatIn):
     historial = list(body.historial) + [{"role": "user", "content": body.mensaje}]
 
     def _generar():
-        for chunk in llm_client.preguntar_stream(system, historial):
+        for chunk in llm_client.preguntar_stream(system, historial, modo_think=True):
             yield f"data: {json.dumps(chunk)}\n\n"
         yield "data: [DONE]\n\n"
 

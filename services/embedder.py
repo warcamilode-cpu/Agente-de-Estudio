@@ -1,47 +1,44 @@
-"""Generación de embeddings usando sentence-transformers (all-MiniLM-L6-v2, 384 dims).
+"""Generación de embeddings usando bge-m3 via Ollama (1024 dims).
 
-Carga el modelo de forma lazy al primer uso. Si sentence-transformers no está
-instalado o el modelo falla, todas las funciones retornan None y el sistema
-cae automáticamente en BM25-lite.
+Requiere Ollama corriendo en OLLAMA_BASE_URL con el modelo bge-m3 disponible.
+Si la llamada falla, retorna None y el sistema cae en BM25-lite automáticamente.
 """
 from __future__ import annotations
 
 import logging
+import os
 
-_model = None
-_intentado = False
+from dotenv import load_dotenv
 
-MODELO = "all-MiniLM-L6-v2"
-DIMS = 384
+load_dotenv()
 
+log = logging.getLogger(__name__)
 
-def _cargar_modelo():
-    global _model, _intentado
-    if _intentado:
-        return _model
-    _intentado = True
-    try:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer(MODELO)
-        logging.info("Embedder: modelo %s cargado correctamente.", MODELO)
-    except Exception as e:
-        logging.warning("Embedder no disponible (sentence-transformers): %s", e)
-        _model = None
-    return _model
+MODELO = os.getenv("MODELO_EMBEDDINGS_OLLAMA", "bge-m3")
+DIMS = 1024
+_OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
 def generar_embedding(texto: str) -> list[float] | None:
-    """Retorna vector normalizado de 384 floats, o None si el modelo no está disponible."""
-    modelo = _cargar_modelo()
-    if modelo is None:
-        return None
+    """Retorna vector de 1024 floats via bge-m3, o None si Ollama no está disponible."""
     try:
-        vec = modelo.encode(texto, normalize_embeddings=True)
-        return vec.tolist()
+        import httpx
+        resp = httpx.post(
+            f"{_OLLAMA_URL}/api/embeddings",
+            json={"model": MODELO, "prompt": texto},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        vec = resp.json().get("embedding")
+        if not vec:
+            log.warning("Embedder: Ollama respondió pero 'embedding' está vacío.")
+            return None
+        return vec
     except Exception as e:
-        logging.warning("Error al generar embedding: %s", e)
+        log.warning("Embedder bge-m3 no disponible: %s", e)
         return None
 
 
 def disponible() -> bool:
-    return _cargar_modelo() is not None
+    """Verifica si bge-m3 está accesible en Ollama."""
+    return generar_embedding("verificación") is not None
