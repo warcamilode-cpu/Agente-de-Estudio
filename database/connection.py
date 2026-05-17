@@ -276,6 +276,12 @@ def _migraciones(conn: sqlite3.Connection) -> None:
         except Exception:
             pass
 
+    # Migración: columna texto_raw en transcripciones (puede faltar en DBs creadas antes)
+    if "transcripciones" in tablas:
+        cols_trans = {r[1] for r in conn.execute("PRAGMA table_info(transcripciones)")}
+        if "texto_raw" not in cols_trans:
+            conn.execute("ALTER TABLE transcripciones ADD COLUMN texto_raw TEXT DEFAULT ''")
+
     # Migración: tabla de transcripciones (Whisper.cpp)
     if "transcripciones" not in tablas:
         conn.executescript("""
