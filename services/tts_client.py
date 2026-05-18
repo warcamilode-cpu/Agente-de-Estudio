@@ -1,6 +1,6 @@
 """Cliente TTS con Kokoro-ONNX.
 
-El modelo se descarga de HuggingFace en el primer uso (~300 MB).
+El modelo se descarga de GitHub Releases en el primer uso (~300 MB).
 Variables de entorno:
   KOKORO_VOZ        ID de voz (default: ef_dora)
   KOKORO_VELOCIDAD  velocidad de habla 0.5–2.0 (default: 1.0)
@@ -11,6 +11,7 @@ import io
 import logging
 import os
 import re
+import urllib.request
 import wave
 
 from dotenv import load_dotenv
@@ -18,6 +19,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 log = logging.getLogger(__name__)
+
+_CACHE_DIR   = os.path.expanduser("~/.cache/kokoro-onnx")
+_MODEL_PATH  = os.path.join(_CACHE_DIR, "kokoro-v1.0.onnx")
+_VOICES_PATH = os.path.join(_CACHE_DIR, "voices-v1.0.bin")
+_MODEL_URL   = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v1.0.onnx"
+_VOICES_URL  = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices-v1.0.bin"
+
+
+def _descargar_si_falta(ruta: str, url: str) -> None:
+    if os.path.exists(ruta):
+        return
+    os.makedirs(os.path.dirname(ruta), exist_ok=True)
+    log.info("Descargando %s…", os.path.basename(url))
+    urllib.request.urlretrieve(url, ruta + ".tmp")
+    os.rename(ruta + ".tmp", ruta)
+    log.info("Descargado: %s (%.1f MB)", os.path.basename(ruta), os.path.getsize(ruta) / 1e6)
 
 _VOZ_DEFAULT = os.getenv("KOKORO_VOZ", "ef_dora")
 _VELOCIDAD   = float(os.getenv("KOKORO_VELOCIDAD", "1.0"))
@@ -40,12 +57,11 @@ def _cargar_modelo():
     if _kokoro is not None:
         return _kokoro
     from kokoro_onnx import Kokoro
-    from huggingface_hub import hf_hub_download
 
-    log.info("Descargando/cargando Kokoro TTS (primer uso ~300 MB)…")
-    model_path  = hf_hub_download("kokoro-tts/kokoro-v1.0", "kokoro-v1.0.onnx")
-    voices_path = hf_hub_download("kokoro-tts/kokoro-v1.0", "voices-v1.0.bin")
-    _kokoro = Kokoro(model_path, voices_path)
+    log.info("Cargando Kokoro TTS…")
+    _descargar_si_falta(_MODEL_PATH,  _MODEL_URL)
+    _descargar_si_falta(_VOICES_PATH, _VOICES_URL)
+    _kokoro = Kokoro(_MODEL_PATH, _VOICES_PATH)
     log.info("Kokoro TTS listo")
     return _kokoro
 

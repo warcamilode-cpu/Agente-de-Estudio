@@ -37,8 +37,17 @@ function _transTab(tab) {
 // ── Poblar selects de materia ────────────────────────────────────
 async function _poblarMateriasModales() {
   try {
-    const materias = await fetch('/cuaderno/materias').then(r => r.json());
-    const selects  = ['trans-filtro-materia', 'ta-materia'];
+    const estructura = await fetch('/cuaderno/estructura').then(r => r.json());
+    // Extraer todas las materias del árbol programa→semestre→materia
+    const materias = [];
+    for (const prog of estructura) {
+      for (const sem of (prog.semestres || [])) {
+        for (const mat of (sem.materias || [])) {
+          materias.push(mat);
+        }
+      }
+    }
+    const selects = ['trans-filtro-materia', 'ta-materia'];
     selects.forEach(sid => {
       const sel = document.getElementById(sid);
       if (!sel) return;
