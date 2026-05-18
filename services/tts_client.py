@@ -23,8 +23,8 @@ log = logging.getLogger(__name__)
 _CACHE_DIR   = os.path.expanduser("~/.cache/kokoro-onnx")
 _MODEL_PATH  = os.path.join(_CACHE_DIR, "kokoro-v1.0.onnx")
 _VOICES_PATH = os.path.join(_CACHE_DIR, "voices-v1.0.bin")
-_MODEL_URL   = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v1.0.onnx"
-_VOICES_URL  = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices-v1.0.bin"
+_MODEL_URL   = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
+_VOICES_URL  = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
 
 
 def _descargar_si_falta(ruta: str, url: str) -> None:
