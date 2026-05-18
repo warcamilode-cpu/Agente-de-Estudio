@@ -52,6 +52,13 @@
         </button>
       </div>
       <div class="nav-section">
+        <span class="nav-section-label">Herramientas</span>
+        <button class="nav-item" data-tab="transcripciones">
+          <span class="nav-icon"><i class="fi fi-rr-microphone"></i></span>
+          <span class="nav-label">Transcripciones</span>
+        </button>
+      </div>
+      <div class="nav-section">
         <span class="nav-section-label">Planificación</span>
         <button class="nav-item" data-tab="plan">
           <span class="nav-icon"><i class="fi fi-rr-list-check"></i></span>
@@ -85,6 +92,10 @@
       <div class="sprite-wrap" data-tab="documentos" data-nombre="Maia"  title="Maia — Documentos">
         <img src="/static/img/maia.png"    alt="Maia"    class="sprite-img" onerror="this.src=''">
         <span class="sprite-label">Maia</span>
+      </div>
+      <div class="sprite-wrap" data-tab="transcripciones" data-nombre="Aldebarán" title="Aldebarán — Transcripciones">
+        <img src="/static/img/aldebaran.png" alt="Aldebarán" class="sprite-img" onerror="this.src=''">
+        <span class="sprite-label">Aldebarán</span>
       </div>
     </div>
     </div>
@@ -375,6 +386,83 @@
 
       </section>
 
+      <!-- ── TRANSCRIPCIONES ── -->
+      <section id="tab-transcripciones" class="section">
+
+        <!-- sub-tabs -->
+        <div style="display:flex; gap:.5rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:.65rem; flex-wrap:wrap; align-items:center;">
+          <button id="btn-trans-tab-asr" class="btn btn-primary btn-sm" onclick="_transTab('asr')" style="display:flex;align-items:center;gap:.35rem;"><i class="fi fi-rr-microphone"></i> Audio → Texto</button>
+          <button id="btn-trans-tab-tts" class="btn btn-secondary btn-sm" onclick="_transTab('tts')" style="display:flex;align-items:center;gap:.35rem;"><i class="fi fi-rr-volume"></i> Texto → Audio</button>
+        </div>
+
+        <!-- panel ASR -->
+        <div id="trans-panel-asr">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; gap:.5rem;">
+            <select id="trans-filtro-materia" style="max-width:220px"><option value="">Todas las materias</option></select>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalSubirAudio()"><i class="fi fi-rr-plus"></i> Transcribir audio</button>
+          </div>
+          <div id="trans-lista"></div>
+        </div>
+
+        <!-- panel TTS -->
+        <div id="trans-panel-tts" style="display:none; max-width:680px;">
+          <div style="display:flex; flex-direction:column; gap:.75rem;">
+            <div>
+              <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Texto a sintetizar</label>
+              <textarea id="tts-texto" rows="6" placeholder="Pegá o escribí el texto que querés escuchar… (máx 4000 caracteres)"
+                style="width:100%; resize:vertical; margin-top:.3rem;"></textarea>
+              <div style="font-size:.72rem; color:var(--text-dim); text-align:right; margin-top:.15rem;">
+                <span id="tts-char-count">0</span> / 4000 chars
+              </div>
+            </div>
+            <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
+              <div style="flex:1; min-width:160px;">
+                <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Voz</label>
+                <select id="tts-voz" style="width:100%; margin-top:.3rem;">
+                  <option value="ef_dora">Dora (español, femenina)</option>
+                  <option value="ef_santa">Santa (español, femenina)</option>
+                  <option value="em_alex">Alex (español, masculino)</option>
+                  <option value="af_sky">Sky (inglés, femenina)</option>
+                  <option value="af_bella">Bella (inglés, femenina)</option>
+                  <option value="am_adam">Adam (inglés, masculino)</option>
+                </select>
+              </div>
+              <div style="flex:0 0 130px;">
+                <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Velocidad</label>
+                <div style="display:flex; align-items:center; gap:.4rem; margin-top:.3rem;">
+                  <input id="tts-velocidad" type="range" min="0.5" max="2.0" step="0.1" value="1.0"
+                    style="flex:1;" oninput="document.getElementById('tts-vel-val').textContent=parseFloat(this.value).toFixed(1)+'x'">
+                  <span id="tts-vel-val" style="font-size:.8rem; min-width:32px; font-variant-numeric:tabular-nums;">1.0x</span>
+                </div>
+              </div>
+              <div style="flex:0 0 110px;">
+                <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Idioma</label>
+                <select id="tts-idioma" style="width:100%; margin-top:.3rem;">
+                  <option value="es">Español</option>
+                  <option value="en-us">Inglés (US)</option>
+                  <option value="en-gb">Inglés (UK)</option>
+                  <option value="pt-br">Portugués</option>
+                  <option value="fr-fr">Francés</option>
+                  <option value="it">Italiano</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="btn-tts-generar" onclick="generarAudio()" style="display:flex;align-items:center;gap:.4rem;">
+                <i class="fi fi-rr-volume"></i> Generar audio
+              </button>
+            </div>
+            <div id="tts-player-wrap" style="display:none; flex-direction:column; gap:.5rem;">
+              <audio id="tts-audio" controls style="width:100%;"></audio>
+              <button class="btn btn-secondary btn-sm" id="btn-tts-descargar" onclick="descargarAudioTTS()" style="align-self:flex-start;">
+                <i class="fi fi-rr-download"></i> Descargar WAV
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
       <!-- ── DASHBOARD ── -->
       <section id="tab-dashboard" class="section">
         <h2>Resumen de hoy</h2>
@@ -572,6 +660,57 @@
   </div>
 </div>
 
+<!-- Modal subir audio -->
+<div class="modal-overlay" id="modal-subir-audio">
+  <div class="modal">
+    <h2>Transcribir audio / video</h2>
+    <div><label>Archivo</label><input id="ta-archivo" type="file" accept=".mp3,.mp4,.wav,.m4a,.ogg,.webm,.mkv,.flac"></div>
+    <div><label>Título de la clase</label><input id="ta-titulo" type="text" placeholder="Ej: Clase 3 — Acción de tutela"></div>
+    <div style="display:flex; gap:.5rem;">
+      <div style="flex:1">
+        <label>Idioma</label>
+        <select id="ta-idioma">
+          <option value="es">Español</option>
+          <option value="en">Inglés</option>
+          <option value="pt">Portugués</option>
+          <option value="fr">Francés</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>Materia (opcional)</label>
+        <select id="ta-materia"><option value="">— Sin materia —</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalSubirAudio()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-trans-subir" onclick="subirAudio()">Transcribir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal visor de transcripción -->
+<div class="modal-overlay" id="modal-trans-visor">
+  <div class="modal" style="max-width:860px; width:95vw;">
+    <div class="modal-top" style="display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.75rem;">
+      <div style="flex:1;">
+        <h2 id="mtv-titulo" style="margin:0; font-size:1.1rem;"></h2>
+        <div style="font-size:.78rem; color:var(--text-muted); display:flex; gap:.75rem; flex-wrap:wrap; margin-top:.25rem;">
+          <span id="mtv-materia"></span>
+          <span id="mtv-idioma"></span>
+          <span id="mtv-fecha"></span>
+        </div>
+      </div>
+      <button class="btn-cerrar-modal-rojo" onclick="cerrarVisorTrans()" title="Cerrar">✕</button>
+    </div>
+    <div id="mtv-cuerpo" style="max-height:65dvh; overflow-y:auto;"></div>
+    <div class="modal-actions" style="margin-top:.75rem;">
+      <button class="btn btn-secondary btn-sm" onclick="cerrarVisorTrans()">Cerrar</button>
+      <button class="btn btn-secondary btn-sm" onclick="_transLeerEnVozAlta()" style="display:flex;align-items:center;gap:.3rem;"><i class="fi fi-rr-volume"></i> Leer en voz alta</button>
+      <button class="btn btn-primary btn-sm" onclick="_transEnviarMaia()" style="display:flex;align-items:center;gap:.3rem;"><i class="fi fi-rr-brain"></i> Analizar con Maia</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
@@ -583,6 +722,7 @@
 <script src="/static/js/documentos.js"></script>
 <script src="/static/js/plan.js"></script>
 <script src="/static/js/dashboard.js"></script>
+<script src="/static/js/transcripciones.js"></script>
 <script src="/static/js/sprites.js"></script>
 </body>
 </html>

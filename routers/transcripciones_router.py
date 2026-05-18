@@ -2,8 +2,10 @@ import os
 import shutil
 import uuid
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
+from pydantic import BaseModel
 from database.connection import db
-from services import whisper_client
+from services import whisper_client, tts_client
 
 router = APIRouter(prefix="/transcripciones", tags=["transcripciones"])
 
@@ -106,3 +108,35 @@ def eliminar_transcripcion(trans_id: int):
     ruta = os.path.join(_UPLOADS, row["archivo_nombre"])
     if os.path.exists(ruta):
         os.remove(ruta)
+
+
+# ── TTS ─────────────────────────────────────────────────────────────
+
+class SintetizarIn(BaseModel):
+    texto: str
+    voz: str = "ef_dora"
+    velocidad: float = 1.0
+    idioma: str = "es"
+
+
+@router.get("/tts/voces")
+def listar_voces():
+    return tts_client.VOCES
+
+
+@router.post("/tts/sintetizar")
+def sintetizar_texto(body: SintetizarIn):
+    if not body.texto.strip():
+        raise HTTPException(status_code=422, detail="El texto no puede estar vacío.")
+    if not tts_client.disponible():
+        raise HTTPException(status_code=503, detail="Kokoro TTS no está instalado.")
+    try:
+        audio_bytes = tts_client.sintetizar(
+            body.texto,
+            voz=body.voz,
+            velocidad=body.velocidad,
+            idioma=body.idioma,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al sintetizar: {e}")
+    return Response(content=audio_bytes, media_type="audio/wav")

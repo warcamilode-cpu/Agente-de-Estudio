@@ -1,18 +1,68 @@
-// Módulo de transcripciones de audio/video (Whisper)
+// Módulo de transcripciones — Audio→Texto (Whisper) y Texto→Audio (Kokoro TTS)
 
 let _transActual  = null;
 let _cargaActiva  = false;
 let _cargaTimer   = null;
 let _cargaInicio  = null;
+let _ttsAudioUrl  = null;   // Blob URL del último WAV generado
 
 // ── Inicialización ──────────────────────────────────────────────
 document.addEventListener('tabchange', e => {
-  if (e.detail === 'transcripciones') cargarTranscripciones();
+  if (e.detail === 'transcripciones') {
+    cargarTranscripciones();
+    _poblarMateriasModales();
+  }
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const txtArea = document.getElementById('tts-texto');
+  if (txtArea) {
+    txtArea.addEventListener('input', () => {
+      const n = txtArea.value.length;
+      document.getElementById('tts-char-count').textContent = n.toLocaleString('es-CO');
+      if (n > 4000) txtArea.value = txtArea.value.slice(0, 4000);
+    });
+  }
+});
+
+// ── Sub-tabs ─────────────────────────────────────────────────────
+function _transTab(tab) {
+  const asr    = document.getElementById('trans-panel-asr');
+  const tts    = document.getElementById('trans-panel-tts');
+  const btnAsr = document.getElementById('btn-trans-tab-asr');
+  const btnTts = document.getElementById('btn-trans-tab-tts');
+  if (tab === 'asr') {
+    asr.style.display = ''; tts.style.display = 'none';
+    btnAsr.className = 'btn btn-primary btn-sm';
+    btnTts.className = 'btn btn-secondary btn-sm';
+  } else {
+    asr.style.display = 'none'; tts.style.display = '';
+    btnAsr.className = 'btn btn-secondary btn-sm';
+    btnTts.className = 'btn btn-primary btn-sm';
+  }
+}
+
+// ── Poblar selects de materia ────────────────────────────────────
+async function _poblarMateriasModales() {
+  try {
+    const materias = await fetch('/cuaderno/materias').then(r => r.json());
+    const selects  = ['trans-filtro-materia', 'ta-materia'];
+    selects.forEach(sid => {
+      const sel = document.getElementById(sid);
+      if (!sel) return;
+      const val    = sel.value;
+      const prefix = sid === 'trans-filtro-materia'
+        ? '<option value="">Todas las materias</option>'
+        : '<option value="">— Sin materia —</option>';
+      sel.innerHTML = prefix + materias.map(m => `<option value="${m.id}">${_tEsc(m.nombre)}</option>`).join('');
+      sel.value = val;
+    });
+  } catch(_) {}
+}
 
 document.getElementById('trans-filtro-materia').addEventListener('change', cargarTranscripciones);
 
-// ── Listar ──────────────────────────────────────────────────────
+// ── Listar transcripciones ───────────────────────────────────────
 async function cargarTranscripciones() {
   if (_cargaActiva) return;
   const lista  = document.getElementById('trans-lista');
@@ -121,7 +171,7 @@ function _iniciarCarga(titulo) {
     document.head.appendChild(s);
   }
 
-  const fmt  = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const fmt   = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   const lista = document.getElementById('trans-lista');
   lista.innerHTML = `
     <div id="trans-card-carga" class="card" style="padding:.75rem .85rem;">
@@ -199,6 +249,78 @@ function _transEnviarMaia() {
       input.focus();
     }
   }, 150);
+}
+
+function _transLeerEnVozAlta() {
+  if (!_transActual || !_transActual.texto) return;
+  cerrarVisorTrans();
+  cambiarTab('transcripciones');
+  setTimeout(() => {
+    _transTab('tts');
+    const txtArea = document.getElementById('tts-texto');
+    if (txtArea) {
+      txtArea.value = _transActual.texto.slice(0, 4000);
+      document.getElementById('tts-char-count').textContent = txtArea.value.length.toLocaleString('es-CO');
+      const idiomaMap = { es: 'es', en: 'en-us', pt: 'pt-br', fr: 'fr-fr', it: 'it' };
+      const selIdioma = document.getElementById('tts-idioma');
+      if (selIdioma && _transActual.idioma) {
+        selIdioma.value = idiomaMap[_transActual.idioma] || 'es';
+      }
+      txtArea.focus();
+    }
+  }, 150);
+}
+
+// ── TTS ─────────────────────────────────────────────────────────
+async function generarAudio() {
+  const texto     = document.getElementById('tts-texto').value.trim();
+  const voz       = document.getElementById('tts-voz').value;
+  const velocidad = parseFloat(document.getElementById('tts-velocidad').value);
+  const idioma    = document.getElementById('tts-idioma').value;
+
+  if (!texto) { toast('Escribí o pegá un texto antes de generar.'); return; }
+
+  const btn  = document.getElementById('btn-tts-generar');
+  const wrap = document.getElementById('tts-player-wrap');
+
+  btn.disabled       = true;
+  btn.innerHTML      = '<i class="fi fi-rr-spinner"></i> Generando…';
+  wrap.style.display = 'none';
+
+  if (_ttsAudioUrl) { URL.revokeObjectURL(_ttsAudioUrl); _ttsAudioUrl = null; }
+
+  try {
+    const r = await fetch('/transcripciones/tts/sintetizar', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ texto, voz, velocidad, idioma }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: 'Error desconocido' }));
+      throw new Error(err.detail || 'Error al sintetizar');
+    }
+    const blob  = await r.blob();
+    _ttsAudioUrl = URL.createObjectURL(blob);
+
+    const audio = document.getElementById('tts-audio');
+    audio.src   = _ttsAudioUrl;
+    wrap.style.display = 'flex';
+    audio.play().catch(() => {});
+    toast('Audio generado ✓');
+  } catch(e) {
+    toast('Error: ' + e.message, 5000);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fi fi-rr-volume"></i> Generar audio';
+  }
+}
+
+function descargarAudioTTS() {
+  if (!_ttsAudioUrl) return;
+  const a    = document.createElement('a');
+  a.href     = _ttsAudioUrl;
+  a.download = `tts_${Date.now()}.wav`;
+  a.click();
 }
 
 // ── Eliminar ─────────────────────────────────────────────────────
