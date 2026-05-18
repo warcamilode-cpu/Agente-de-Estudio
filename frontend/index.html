@@ -387,17 +387,17 @@
       </section>
 
       <!-- ── TRANSCRIPCIONES ── -->
-      <section id="tab-transcripciones" class="section">
+      <section id="tab-transcripciones" class="section" style="padding:0; overflow:hidden; flex-direction:column;">
 
         <!-- sub-tabs -->
-        <div style="display:flex; gap:.5rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:.65rem; flex-wrap:wrap; align-items:center;">
-          <button id="btn-trans-tab-asr" class="btn btn-primary btn-sm" onclick="_transTab('asr')" style="display:flex;align-items:center;gap:.35rem;"><i class="fi fi-rr-microphone"></i> Audio → Texto</button>
-          <button id="btn-trans-tab-tts" class="btn btn-secondary btn-sm" onclick="_transTab('tts')" style="display:flex;align-items:center;gap:.35rem;"><i class="fi fi-rr-volume"></i> Texto → Audio</button>
+        <div class="docs-subtabs-bar">
+          <button class="docs-subtab-btn active" id="trans-stab-asr" onclick="_transTab('asr')"><i class="fi fi-rr-microphone"></i> Audio → Texto</button>
+          <button class="docs-subtab-btn"        id="trans-stab-tts" onclick="_transTab('tts')"><i class="fi fi-rr-volume"></i> Texto → Audio</button>
         </div>
 
         <!-- panel ASR -->
-        <div id="trans-panel-asr">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; gap:.5rem;">
+        <div id="trans-panel-asr" style="flex:1; overflow-y:auto; padding:var(--gap); display:flex; flex-direction:column; gap:.75rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
             <select id="trans-filtro-materia" style="max-width:220px"><option value="">Todas las materias</option></select>
             <button class="btn btn-primary btn-sm" onclick="abrirModalSubirAudio()"><i class="fi fi-rr-plus"></i> Transcribir audio</button>
           </div>
@@ -405,8 +405,8 @@
         </div>
 
         <!-- panel TTS -->
-        <div id="trans-panel-tts" style="display:none; max-width:680px;">
-          <div style="display:flex; flex-direction:column; gap:.75rem;">
+        <div id="trans-panel-tts" style="display:none; flex:1; overflow-y:auto; padding:var(--gap);">
+          <div style="max-width:640px; display:flex; flex-direction:column; gap:.85rem;">
             <div>
               <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Texto a sintetizar</label>
               <textarea id="tts-texto" rows="6" placeholder="Pegá o escribí el texto que querés escuchar… (máx 4000 caracteres)"
@@ -415,8 +415,8 @@
                 <span id="tts-char-count">0</span> / 4000 chars
               </div>
             </div>
-            <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
-              <div style="flex:1; min-width:160px;">
+            <div style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:flex-end;">
+              <div style="flex:2; min-width:160px;">
                 <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Voz</label>
                 <select id="tts-voz" style="width:100%; margin-top:.3rem;">
                   <option value="ef_dora">Dora (español, femenina)</option>
@@ -427,15 +427,7 @@
                   <option value="am_adam">Adam (inglés, masculino)</option>
                 </select>
               </div>
-              <div style="flex:0 0 130px;">
-                <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Velocidad</label>
-                <div style="display:flex; align-items:center; gap:.4rem; margin-top:.3rem;">
-                  <input id="tts-velocidad" type="range" min="0.5" max="2.0" step="0.1" value="1.0"
-                    style="flex:1;" oninput="document.getElementById('tts-vel-val').textContent=parseFloat(this.value).toFixed(1)+'x'">
-                  <span id="tts-vel-val" style="font-size:.8rem; min-width:32px; font-variant-numeric:tabular-nums;">1.0x</span>
-                </div>
-              </div>
-              <div style="flex:0 0 110px;">
+              <div style="flex:1; min-width:100px;">
                 <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Idioma</label>
                 <select id="tts-idioma" style="width:100%; margin-top:.3rem;">
                   <option value="es">Español</option>
@@ -446,9 +438,17 @@
                   <option value="it">Italiano</option>
                 </select>
               </div>
+              <div style="flex:0 0 auto;">
+                <label style="font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Velocidad</label>
+                <div style="display:flex; align-items:center; gap:.5rem; margin-top:.3rem;">
+                  <input id="tts-velocidad" type="range" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100px;"
+                    oninput="document.getElementById('tts-vel-val').textContent=parseFloat(this.value).toFixed(1)+'x'">
+                  <span id="tts-vel-val" style="font-size:.82rem; min-width:36px; font-variant-numeric:tabular-nums; color:var(--text-muted);">1.0x</span>
+                </div>
+              </div>
             </div>
             <div>
-              <button class="btn btn-primary" id="btn-tts-generar" onclick="generarAudio()" style="display:flex;align-items:center;gap:.4rem;">
+              <button class="btn btn-primary" id="btn-tts-generar" onclick="generarAudio()">
                 <i class="fi fi-rr-volume"></i> Generar audio
               </button>
             </div>

@@ -27,19 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Sub-tabs ─────────────────────────────────────────────────────
 function _transTab(tab) {
-  const asr    = document.getElementById('trans-panel-asr');
-  const tts    = document.getElementById('trans-panel-tts');
-  const btnAsr = document.getElementById('btn-trans-tab-asr');
-  const btnTts = document.getElementById('btn-trans-tab-tts');
-  if (tab === 'asr') {
-    asr.style.display = ''; tts.style.display = 'none';
-    btnAsr.className = 'btn btn-primary btn-sm';
-    btnTts.className = 'btn btn-secondary btn-sm';
-  } else {
-    asr.style.display = 'none'; tts.style.display = '';
-    btnAsr.className = 'btn btn-secondary btn-sm';
-    btnTts.className = 'btn btn-primary btn-sm';
-  }
+  const esTts = tab === 'tts';
+  document.getElementById('trans-panel-asr').style.display = esTts ? 'none' : 'flex';
+  document.getElementById('trans-panel-tts').style.display = esTts ? 'flex' : 'none';
+  document.getElementById('trans-stab-asr').classList.toggle('active', !esTts);
+  document.getElementById('trans-stab-tts').classList.toggle('active',  esTts);
 }
 
 // ── Poblar selects de materia ────────────────────────────────────
