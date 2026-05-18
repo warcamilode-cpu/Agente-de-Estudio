@@ -64,10 +64,15 @@ def _filtrar_think(texto: str) -> str:
     return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
 
-def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int) -> str:
+def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int, modo_think: bool = False) -> str:
     import httpx
 
-    msgs = [{"role": "system", "content": system}] + mensajes
+    # Qwen3: /think activa razonamiento extendido, /no_think lo desactiva
+    think_prefix = "/think\n" if modo_think else "/no_think\n"
+    mensajes_mod = list(mensajes)
+    if mensajes_mod and mensajes_mod[0]["role"] == "user":
+        mensajes_mod[0] = {**mensajes_mod[0], "content": think_prefix + mensajes_mod[0]["content"]}
+    msgs = [{"role": "system", "content": system}] + mensajes_mod
     t0 = time.monotonic()
     r = httpx.post(
         f"{_OLLAMA_URL}/api/chat",
@@ -87,10 +92,14 @@ def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int) -> str
     return texto
 
 
-def _ollama_stream(system: str, mensajes: list[dict], max_tokens: int) -> Generator[str, None, None]:
+def _ollama_stream(system: str, mensajes: list[dict], max_tokens: int, modo_think: bool = False) -> Generator[str, None, None]:
     import httpx
 
-    msgs = [{"role": "system", "content": system}] + mensajes
+    think_prefix = "/think\n" if modo_think else "/no_think\n"
+    mensajes_mod = list(mensajes)
+    if mensajes_mod and mensajes_mod[0]["role"] == "user":
+        mensajes_mod[0] = {**mensajes_mod[0], "content": think_prefix + mensajes_mod[0]["content"]}
+    msgs = [{"role": "system", "content": system}] + mensajes_mod
     t0 = time.monotonic()
     tokens_in = tokens_out = 0
 
@@ -150,12 +159,12 @@ def _ollama_stream(system: str, mensajes: list[dict], max_tokens: int) -> Genera
 
 # ── API pública ───────────────────────────────────────────────────
 
-def preguntar(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None) -> str:
+def preguntar(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None, modo_think: bool = False) -> str:
     mt = max_tokens or _MAX_TOKENS
     if _PROVEEDOR == "ollama":
-        return _ollama_preguntar(system_prompt, mensajes, mt)
+        return _ollama_preguntar(system_prompt, mensajes, mt, modo_think)
 
-    # Claude
+    # Claude (modo_think ignorado — usa extended thinking si se necesita)
     t0 = time.monotonic()
     respuesta = _get_claude().messages.create(
         model=_MODELO_CLAUDE,
@@ -171,10 +180,10 @@ def preguntar(system_prompt: str, mensajes: list[dict], max_tokens: int | None =
     return respuesta.content[0].text
 
 
-def preguntar_stream(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None) -> Generator[str, None, None]:
+def preguntar_stream(system_prompt: str, mensajes: list[dict], max_tokens: int | None = None, modo_think: bool = False) -> Generator[str, None, None]:
     mt = max_tokens or _MAX_TOKENS
     if _PROVEEDOR == "ollama":
-        yield from _ollama_stream(system_prompt, mensajes, mt)
+        yield from _ollama_stream(system_prompt, mensajes, mt, modo_think)
         return
 
     # Claude
