@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
 from pydantic import BaseModel
 from database.connection import db
-from services import whisper_client, tts_client
+from services import whisper_client, tts_client, gpu_lock
 
 router = APIRouter(prefix="/transcripciones", tags=["transcripciones"])
 
@@ -29,16 +29,23 @@ def transcribir_audio(
     if not whisper_client.disponible():
         raise HTTPException(status_code=503, detail="El servicio de transcripción no está disponible. Verificá que whisper-server esté corriendo.")
 
+    ok, msg = gpu_lock.adquirir("whisper")
+    if not ok:
+        raise HTTPException(status_code=409, detail=msg)
+
     nombre_archivo = f"{uuid.uuid4()}{ext}"
     ruta = os.path.join(_UPLOADS, nombre_archivo)
     with open(ruta, "wb") as f:
         shutil.copyfileobj(archivo.file, f)
 
     try:
+        gpu_lock.liberar_ollama()
         texto = whisper_client.transcribir(ruta, idioma=idioma)
     except Exception as e:
         os.remove(ruta)
         raise HTTPException(status_code=500, detail=f"Error al transcribir: {e}")
+    finally:
+        gpu_lock.liberar("whisper")
 
     with db() as conn:
         cur = conn.execute(

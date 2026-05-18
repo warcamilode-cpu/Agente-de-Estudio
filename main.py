@@ -60,6 +60,12 @@ app.include_router(transcripciones_router.router)
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 
+@app.get("/gpu/estado")
+def gpu_estado():
+    from services import gpu_lock
+    return gpu_lock.estado()
+
+
 @app.get("/health")
 def health_check():
     from datetime import datetime

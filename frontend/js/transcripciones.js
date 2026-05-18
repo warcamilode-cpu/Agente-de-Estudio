@@ -147,6 +147,12 @@ async function subirAudio() {
     const r = await fetch('/transcripciones', { method: 'POST', body: fd });
     if (!r.ok) {
       const err = await r.json().catch(() => ({ detail: 'Error desconocido' }));
+      if (r.status === 409) {
+        _detenerCarga();
+        alert('⚠️ GPU ocupada\n\n' + (err.detail || 'Otra operación está usando la GPU.'));
+        cargarTranscripciones();
+        return;
+      }
       throw new Error(err.detail || 'Error al transcribir');
     }
     const resultado = await r.json();
