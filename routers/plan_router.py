@@ -113,10 +113,54 @@ def _contexto_cuaderno(tema: str, materia_id: int | None) -> str:
 
 # ── Endpoints del Planificador ────────────────────────────────────
 
+@router.post("/planificador/stream")
+def generar_plan_stream(body: PlanIn):
+    """Genera el plan vía SSE streaming. Al finalizar guarda en DB y envía [PLAN_ID:N]."""
+    if not body.tema.strip():
+        raise HTTPException(status_code=422, detail="El campo 'tema' es obligatorio.")
+
+    contexto_extra = _contexto_cuaderno(body.tema, body.materia_id)
+    prompt_usuario = (
+        f"Quiero estudiar el siguiente tema: **{body.tema}**"
+        + contexto_extra
+        + "\n\nGenerá el plan completo con los 3 módulos tal como se definió."
+    )
+
+    def _generar():
+        acumulado = ""
+        try:
+            for chunk in llm_client.preguntar_stream(
+                _SYSTEM_PLANIFICADOR,
+                [{"role": "user", "content": prompt_usuario}],
+                max_tokens=8192,
+                modo_think=True,
+            ):
+                acumulado += chunk
+                yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps(f'Error al generar el plan: {e}')}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        try:
+            with db() as conn:
+                cur = conn.execute(
+                    "INSERT INTO planes_estudio (materia_id, tema, plan_texto) VALUES (?,?,?)",
+                    (body.materia_id, body.tema, acumulado),
+                )
+                plan_id = cur.lastrowid
+            yield f"data: [PLAN_ID:{plan_id}]\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps(f'Error al guardar el plan: {e}')}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(_generar(), media_type="text/event-stream")
+
+
 @router.post("/planificador")
 def generar_plan_topico(body: PlanIn):
-    """Genera un plan completo de 3 módulos y lo guarda en DB.
-    Llama al LLM de forma síncrona — todos los módulos aparecen juntos al terminar."""
+    """Genera un plan completo de 3 módulos y lo guarda en DB (síncrono — solo para uso interno)."""
     if not body.tema.strip():
         raise HTTPException(status_code=422, detail="El campo 'tema' es obligatorio.")
 

@@ -22,42 +22,89 @@ async function generarPlan() {
   btn.disabled    = true;
   btn.textContent = "Generando…";
 
-  // Ocultar historial si estaba visible
   ocultarHistorial();
 
-  // Indicar carga — el form queda visible mientras espera
-  const formArea = document.getElementById("plan-form-area");
-  formArea.insertAdjacentHTML("afterend",
-    '<p id="plan-loading" style="color:var(--text-muted); font-size:.875rem; margin:.5rem var(--gap);">Atlas está generando los 4 módulos… (puede tardar ~20 s)</p>'
-  );
+  // Mostrar área de contenido inmediatamente con placeholder
+  const formArea      = document.getElementById("plan-form-area");
+  const contenidoWrap = document.getElementById("plan-contenido-wrap");
+  const contenido     = document.getElementById("plan-contenido");
+  const fecha         = document.getElementById("plan-fecha");
+  const sinPlan       = document.getElementById("plan-sin-plan-msg");
+  const chat          = document.getElementById("plan-agentes-chat");
+
+  if (formArea)      formArea.style.display      = "none";
+  if (contenidoWrap) contenidoWrap.style.display = "block";
+  if (sinPlan)       sinPlan.style.display        = "none";
+  if (chat)          chat.style.display           = "flex";
+  if (fecha)         fecha.textContent            = "Atlas está pensando el plan… esto puede tardar un momento.";
+  if (contenido)     contenido.innerHTML          = "<p style='color:var(--text-muted);font-size:.85rem;'>▍</p>";
+
+  _planTab("plan");
+
+  let acumulado = "";
+  let planId    = null;
 
   try {
-    const data = await api("POST", "/plan/planificador", {
-      tema,
-      materia_id: materiaId ? +materiaId : null,
+    const resp = await fetch("/plan/planificador/stream", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ tema, materia_id: materiaId ? +materiaId : null }),
     });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-    _planActivo     = data;
-    _planHistorial  = [];
-    _modoEval       = false;
-    _examenIniciado = false;
-    _planToksAcum   = 0;
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf       = "";
+    let terminado = false;
 
-    try {
-      _mostrarPlan(data);
-    } catch (renderErr) {
-      console.error("Error al renderizar plan:", renderErr);
-      toast("El plan se generó pero no pudo mostrarse. Buscalo en Historial.", 5000);
+    while (!terminado) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lineas = buf.split("\n");
+      buf = lineas.pop();
+      for (const linea of lineas) {
+        if (!linea.startsWith("data: ")) continue;
+        const payload = linea.slice(6).trim();
+        if (payload === "[DONE]")            { terminado = true; break; }
+        if (payload.startsWith("[PLAN_ID:")) { planId = parseInt(payload.slice(9, -1)); continue; }
+        try {
+          acumulado += JSON.parse(payload);
+          if (contenido) contenido.innerHTML = marked.parse(acumulado);
+          contenidoWrap?.scrollTo(0, 0);
+        } catch (_) {}
+      }
     }
-
   } catch (e) {
     toast(`Error al generar el plan: ${e.message}`, 5000);
-  } finally {
-    document.getElementById("plan-loading")?.remove();
+    if (formArea)      formArea.style.display      = "";
+    if (contenidoWrap) contenidoWrap.style.display = "none";
+    if (sinPlan)       sinPlan.style.display        = "flex";
+    if (chat)          chat.style.display           = "none";
     btn.disabled    = false;
     btn.textContent = "Generar plan completo";
     _planGenerando  = false;
+    return;
   }
+
+  if (contenido) contenido.innerHTML = marked.parse(acumulado);
+  if (fecha) fecha.textContent = "Generado el " + new Date().toLocaleDateString("es-CO", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  _planActivo     = { id: planId, tema, plan_texto: acumulado };
+  _planHistorial  = [];
+  _modoEval       = false;
+  _examenIniciado = false;
+  _planToksAcum   = 0;
+  _actualizarIndicadorAgente();
+
+  const sesEl = document.getElementById("plan-tok-session");
+  if (sesEl) sesEl.textContent = "";
+
+  btn.disabled    = false;
+  btn.textContent = "Generar plan completo";
+  _planGenerando  = false;
 }
 
 function _mostrarPlan(data) {
