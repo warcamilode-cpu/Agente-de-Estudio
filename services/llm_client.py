@@ -64,20 +64,9 @@ def _filtrar_think(texto: str) -> str:
     return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
 
-def _sanitizar_contexto(mensajes: list[dict]) -> list[dict]:
-    """Elimina tokens de control de LLM de cualquier contenido de usuario.
-    Evita que documentos maliciosos inyecten tokens especiales de Qwen/Llama/etc.
-    que confunden al modelo y generan respuestas fantasma en loop."""
-    patron = re.compile(r"<\|[^|>]{1,30}\|>|</?s>|\[/?INST\]", re.IGNORECASE)
-    resultado = []
-    for msg in mensajes:
-        content = msg.get("content", "")
-        if isinstance(content, str):
-            limpio = patron.sub("", content)
-            resultado.append({**msg, "content": limpio})
-        else:
-            resultado.append(msg)
-    return resultado
+def _sanitizar_texto(texto: str) -> str:
+    """Elimina tokens de control LLM de una cadena de texto."""
+    return re.sub(r"<\|[^|>]{1,30}\|>|</?s>|\[/?INST\]", "", texto, flags=re.IGNORECASE)
 
 
 def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int, modo_think: bool = False) -> str:
@@ -85,10 +74,13 @@ def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int, modo_t
 
     # Qwen3: /think activa razonamiento extendido, /no_think lo desactiva
     think_prefix = "/think\n" if modo_think else "/no_think\n"
-    mensajes_mod = _sanitizar_contexto(list(mensajes))
+    mensajes_mod = [
+        {**m, "content": _sanitizar_texto(m["content"])} if isinstance(m.get("content"), str) else m
+        for m in mensajes
+    ]
     if mensajes_mod and mensajes_mod[0]["role"] == "user":
         mensajes_mod[0] = {**mensajes_mod[0], "content": think_prefix + mensajes_mod[0]["content"]}
-    msgs = [{"role": "system", "content": system}] + mensajes_mod
+    msgs = [{"role": "system", "content": _sanitizar_texto(system)}] + mensajes_mod
     t0 = time.monotonic()
     r = httpx.post(
         f"{_OLLAMA_URL}/api/chat",
@@ -112,10 +104,13 @@ def _ollama_stream(system: str, mensajes: list[dict], max_tokens: int, modo_thin
     import httpx
 
     think_prefix = "/think\n" if modo_think else "/no_think\n"
-    mensajes_mod = _sanitizar_contexto(list(mensajes))
+    mensajes_mod = [
+        {**m, "content": _sanitizar_texto(m["content"])} if isinstance(m.get("content"), str) else m
+        for m in mensajes
+    ]
     if mensajes_mod and mensajes_mod[0]["role"] == "user":
         mensajes_mod[0] = {**mensajes_mod[0], "content": think_prefix + mensajes_mod[0]["content"]}
-    msgs = [{"role": "system", "content": system}] + mensajes_mod
+    msgs = [{"role": "system", "content": _sanitizar_texto(system)}] + mensajes_mod
     t0 = time.monotonic()
     tokens_in = tokens_out = 0
 
