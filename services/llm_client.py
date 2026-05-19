@@ -64,12 +64,28 @@ def _filtrar_think(texto: str) -> str:
     return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
 
+def _sanitizar_contexto(mensajes: list[dict]) -> list[dict]:
+    """Elimina tokens de control de LLM de cualquier contenido de usuario.
+    Evita que documentos maliciosos inyecten tokens especiales de Qwen/Llama/etc.
+    que confunden al modelo y generan respuestas fantasma en loop."""
+    patron = re.compile(r"<\|[^|>]{1,30}\|>|</?s>|\[/?INST\]", re.IGNORECASE)
+    resultado = []
+    for msg in mensajes:
+        content = msg.get("content", "")
+        if isinstance(content, str):
+            limpio = patron.sub("", content)
+            resultado.append({**msg, "content": limpio})
+        else:
+            resultado.append(msg)
+    return resultado
+
+
 def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int, modo_think: bool = False) -> str:
     import httpx
 
     # Qwen3: /think activa razonamiento extendido, /no_think lo desactiva
     think_prefix = "/think\n" if modo_think else "/no_think\n"
-    mensajes_mod = list(mensajes)
+    mensajes_mod = _sanitizar_contexto(list(mensajes))
     if mensajes_mod and mensajes_mod[0]["role"] == "user":
         mensajes_mod[0] = {**mensajes_mod[0], "content": think_prefix + mensajes_mod[0]["content"]}
     msgs = [{"role": "system", "content": system}] + mensajes_mod
@@ -96,7 +112,7 @@ def _ollama_stream(system: str, mensajes: list[dict], max_tokens: int, modo_thin
     import httpx
 
     think_prefix = "/think\n" if modo_think else "/no_think\n"
-    mensajes_mod = list(mensajes)
+    mensajes_mod = _sanitizar_contexto(list(mensajes))
     if mensajes_mod and mensajes_mod[0]["role"] == "user":
         mensajes_mod[0] = {**mensajes_mod[0], "content": think_prefix + mensajes_mod[0]["content"]}
     msgs = [{"role": "system", "content": system}] + mensajes_mod
