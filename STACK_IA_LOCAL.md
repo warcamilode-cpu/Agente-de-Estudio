@@ -17,10 +17,10 @@
 
 ## Modelos definidos
 
-### 1. Qwen3 8B Q4_K_M — Motor principal de texto
+### 1. Qwen3 9B Q4_K_M — Motor principal de texto
 **Proveedor:** Ollama  
 **Ejecuta en:** GPU  
-**VRAM:** ~5.5 GB  
+**VRAM:** ~6 GB  
 **RAM adicional:** ~1.5 GB  
 
 Modelo principal para todos los agentes conversacionales. Se eligió sobre DeepSeek-R1 8B por:
@@ -113,7 +113,7 @@ Pipeline completo de voz conversacional con los agentes (definido, no implementa
 ```
 Voz usuario  →  Whisper.cpp medium (CPU)  →  texto
                                                 ↓
-                                       Qwen3 8B (GPU)
+                                       Qwen3 9B (GPU)
                                                 ↓
 Voz agente   ←  Kokoro TTS (CPU)       ←  texto respuesta
 ```
@@ -130,12 +130,12 @@ Voz agente   ←  Kokoro TTS (CPU)       ←  texto respuesta
 
 | Modelo | GPU VRAM | RAM | CPU |
 |--------|---------|-----|-----|
-| Qwen3 8B Q4_K_M | ~5.5 GB | ~1.5 GB | Mínimo |
+| Qwen3 9B Q4_K_M | ~6 GB | ~1.5 GB | Mínimo |
 | Whisper.cpp medium | 0 | ~1 GB | Alto (solo al transcribir) |
 | bge-m3 | 0 | ~1.1 GB | Bajo (solo al indexar/consultar) |
-| **Total máximo** | **~5.5 GB / 11 GB** | **~4 GB** | — |
+| **Total máximo** | **~6 GB / 11 GB** | **~4 GB** | — |
 
-VRAM libre disponible para KV cache de Qwen3: ~5.5 GB — margen cómodo para planes largos de Atlas.
+VRAM libre disponible para KV cache de Qwen3: ~5 GB — margen cómodo para planes largos de Atlas.
 
 ---
 

@@ -33,7 +33,7 @@ Aplicación web personal de estudio tipo "todo en uno" llamada **Atalaya Pléyad
 | Backend | FastAPI (Python 3.11+) | Uvicorn como servidor |
 | Base de datos | SQLite | Un solo archivo `estudio.db` |
 | IA activa | Anthropic Claude API | `claude-haiku-4-5-20251001` |
-| IA futura | Ollama local | Qwen3 8B Q4_K_M — ver `STACK_IA_LOCAL.md` |
+| IA futura | Ollama local | Qwen3 9B Q4_K_M — ver `STACK_IA_LOCAL.md` |
 | Frontend | HTML + CSS + Vanilla JS | Sin frameworks, sin build step |
 | Extracción de texto | pdfplumber, python-docx | Para RAG de documentos |
 | Embeddings semánticos | sentence-transformers | `all-MiniLM-L6-v2` (384 dims), carga lazy con fallback a BM25 |
@@ -363,7 +363,7 @@ sudo systemctl status atalaya   # verificar
 - [x] Imágenes de todos los agentes en `frontend/img/`
 
 ### Pendiente 📋
-- [ ] Migración a Qwen3 8B via Ollama (ver `STACK_IA_LOCAL.md` — Fase 1)
+- [ ] Migración a Qwen3 9B via Ollama (ver `STACK_IA_LOCAL.md` — Fase 1)
 - [ ] RAG semántico con bge-m3 para Maia (Fase 2)
 - [ ] Agente de transcripción con Whisper.cpp medium (Fase 3)
 - [ ] Voz conversacional con Kokoro TTS (Fase 4)

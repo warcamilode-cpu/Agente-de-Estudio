@@ -111,8 +111,8 @@ def _contexto_cuaderno(tema: str, materia_id: int | None) -> str:
 
 @router.post("/planificador")
 def generar_plan_topico(body: PlanIn):
-    """Genera un plan completo de 4 módulos y lo guarda en DB.
-    Llama a Claude de forma síncrona — todos los módulos aparecen juntos al terminar."""
+    """Genera un plan completo de 3 módulos y lo guarda en DB.
+    Llama al LLM de forma síncrona — todos los módulos aparecen juntos al terminar."""
     if not body.tema.strip():
         raise HTTPException(status_code=422, detail="El campo 'tema' es obligatorio.")
 
@@ -120,13 +120,14 @@ def generar_plan_topico(body: PlanIn):
     prompt_usuario = (
         f"Quiero estudiar el siguiente tema: **{body.tema}**"
         + contexto_extra
-        + "\n\nGenerá el plan completo con los 4 módulos tal como se definió."
+        + "\n\nGenerá el plan completo con los 3 módulos tal como se definió."
     )
 
     plan_texto = llm_client.preguntar(
         _SYSTEM_PLANIFICADOR,
         [{"role": "user", "content": prompt_usuario}],
         max_tokens=8192,
+        modo_think=True,
     )
 
     with db() as conn:
@@ -191,7 +192,7 @@ def chat_planificador(body: PlanChatIn):
     historial = list(body.historial) + [{"role": "user", "content": body.mensaje}]
 
     def _generar():
-        for chunk in llm_client.preguntar_stream(system, historial):
+        for chunk in llm_client.preguntar_stream(system, historial, modo_think=True):
             yield f"data: {json.dumps(chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
