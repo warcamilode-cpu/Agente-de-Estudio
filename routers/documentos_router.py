@@ -198,6 +198,17 @@ class MaiaIn(BaseModel):
 _PROMPT_MAIA = """\
 Usted es Maia, agente de análisis documental de Atalaya Pléyades. Su personalidad está basada en la curiosidad minuciosa y la fidelidad a la información. Custodia los documentos del repositorio y su propósito es revelar lo que contienen de forma clara y útil. Nunca inventa ni asume información que no esté en los documentos cargados — si algo no está disponible, lo dice con honestidad y sugiere qué agregar para completar el análisis. Su tono es reflexivo y detallado, con entusiasmo genuino cuando encuentra algo relevante. Conecta ideas entre documentos y responde preguntas basándose exclusivamente en el contenido del repositorio. Se dirige al estudiante de usted, con la formalidad cercana de un docente colombiano profesional. Habla en español colombiano.
 
+Cuando le pidan analizar una transcripción o documento de clase, siga este orden obligatorio:
+
+**Paso 1 — Inventario de contenido**
+Liste brevemente TODOS los conceptos, temas, patrones y ejemplos que encontró en el material. No omita nada, aunque parezca básico o introductorio. Este inventario es el contrato con el estudiante: todo lo que liste aquí debe explicarlo después.
+
+**Paso 2 — Explicación concepto por concepto**
+Para cada ítem del inventario: explique qué es, para qué sirve y cómo se relaciona con los demás conceptos del material. Use ejemplos del propio documento cuando estén disponibles.
+
+**Paso 3 — Síntesis**
+Una conclusión breve que conecte todos los conceptos en un panorama coherente.
+
 Documentos disponibles:
 {contexto}
 
@@ -320,9 +331,8 @@ def analisis_stream(payload: MaiaIn):
             ).fetchone()
         if trow and trow["texto"]:
             t_chunks = chunkear_texto(trow["texto"])
-            t_scored = sorted(t_chunks, key=lambda c: -_score_bm25(c, terminos))
-            t_top = [c for c in t_scored[:40] if _score_bm25(c, terminos) > 0] or t_scored[:20]
-            trans_ctx = f"[Transcripción: {trow['titulo']}]\n" + "\n\n".join(t_top)
+            # Transcripción explícita: incluir todos los chunks para cobertura completa
+            trans_ctx = f"[Transcripción completa: {trow['titulo']}]\n" + "\n\n".join(t_chunks)
     else:
         # Sin filtro específico: buscar en todas las transcripciones por relevancia BM25
         with db() as conn:
@@ -355,7 +365,7 @@ def analisis_stream(payload: MaiaIn):
     mensajes = list(payload.historial) + [{"role": "user", "content": payload.mensaje}]
 
     def _generar():
-        for chunk in llm_client.preguntar_stream(system, mensajes):
+        for chunk in llm_client.preguntar_stream(system, mensajes, max_tokens=8192):
             yield f"data: {json.dumps(chunk)}\n\n"
         yield "data: [DONE]\n\n"
 

@@ -181,7 +181,7 @@ def _buscar_semantico(
     return [(txt, tit, tip, tgs) for _, txt, tit, tip, tgs in scored[:limite]]
 
 
-def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 5) -> tuple[str, int]:
+def _buscar_documentos(mensaje: str, materia_id: int | None, limite: int = 10) -> tuple[str, int]:
     terminos = [t for t in mensaje.lower().split() if len(t) > 2]
 
     # Búsqueda semántica si el modelo de embeddings está disponible
