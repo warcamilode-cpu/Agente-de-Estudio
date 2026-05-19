@@ -85,7 +85,7 @@ def _ollama_preguntar(system: str, mensajes: list[dict], max_tokens: int, modo_t
     r = httpx.post(
         f"{_OLLAMA_URL}/api/chat",
         json={"model": _MODELO_OLLAMA, "messages": msgs, "stream": False,
-              "options": {"num_predict": max_tokens}},
+              "options": {"num_predict": max_tokens, "stop": ["<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|end|>"]}},
         timeout=300.0,
     )
     r.raise_for_status()
@@ -123,7 +123,7 @@ def _ollama_stream(system: str, mensajes: list[dict], max_tokens: int, modo_thin
         "POST",
         f"{_OLLAMA_URL}/api/chat",
         json={"model": _MODELO_OLLAMA, "messages": msgs, "stream": True,
-              "options": {"num_predict": max_tokens}},
+              "options": {"num_predict": max_tokens, "stop": ["<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|end|>"]}},
         timeout=300.0,
     ) as resp:
         resp.raise_for_status()
